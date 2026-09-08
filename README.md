@@ -2,7 +2,7 @@
 
 [![Validate](https://github.com/ahmtsahin/groundwork/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmtsahin/groundwork/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/ahmtsahin/groundwork)](LICENSE)
-[![skills.sh](https://skills.sh/b/ahmtsahin/groundwork)](https://skills.sh/ahmtsahin/groundwork)
+[![skills.sh](https://skills.sh/b/ahmtsahin/groundwork)](https://skills.sh/ahmtsahin/groundwork/settle)
 
 **Read the code. Settle the decisions. Build with a clear brief.**
 
