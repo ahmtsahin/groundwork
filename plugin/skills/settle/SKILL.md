@@ -1,6 +1,6 @@
 ---
 name: settle
-description: Turn a rough idea or underspecified repository change into a decision-complete implementation by inspecting the codebase, discovering intent, resolving material decisions through evidence-backed rounds, then implementing and verifying. Use when the user invokes /groundwork:settle or $settle with or without a task, or asks to be brainstormed, grilled, or questioned before coding. Do not use for explanation-only work or pure research.
+description: Turn a rough idea or underspecified repository change into a decision-complete implementation by inspecting the codebase, discovering intent, resolving material decisions through evidence-backed rounds, then implementing and verifying. Use when the user invokes /groundwork:settle, /settle, or $settle with or without a task, or asks to be brainstormed, grilled, or questioned before coding. Do not use for explanation-only work or pure research.
 ---
 
 # Settle
@@ -165,6 +165,18 @@ tool.
 
 ## Native question tool
 
+Every round goes through the host's built-in question form. Identify the host
+by the tool in your tool list: Claude Code exposes `AskUserQuestion`, Codex
+exposes `request_user_input`. Do not replace the form with prose questions.
+If neither tool is available, stop before implementation and say so; on
+Codex, tell the operator to run:
+
+`codex features enable default_mode_request_user_input`
+
+Put two to four verified facts with source anchors, one labelled inference or
+open tension, and what waits on the answers in assistant text immediately
+before the call. Then call the host's tool.
+
 On Claude Code, call `AskUserQuestion` with:
 
 ```json
@@ -183,16 +195,50 @@ On Claude Code, call `AskUserQuestion` with:
 }
 ```
 
-Put two to four verified facts with source anchors, one labelled inference or
-open tension, and what waits on the answers in assistant text immediately before
-the call. `header` is at most twelve characters. Ask at most four questions per
-call, with two to four options each. Put the recommended option first and suffix
-its label with `(Recommended)`. The client supplies a free-form Other choice.
+On Codex, in Default mode, call `request_user_input` with:
 
-Answers return inside the same call as selected labels or explicit custom text.
-Process them and continue in the current turn, never waiting for a new user
-message. A dismissal is not an answer — stop without implementing rather than
-choosing for the user.
+```json
+{
+  "questions": [
+    {
+      "id": "stable-id",
+      "header": "Short chip",
+      "question": "One property? State what a wrong answer costs, then what the repository proves with an anchor.",
+      "options": [
+        { "label": "Short choice (Recommended)", "description": "Consequence and strongest limitation." },
+        { "label": "Other choice", "description": "Consequence and strongest limitation." }
+      ]
+    }
+  ]
+}
+```
+
+Constraints on both hosts:
+
+- `header` is at most twelve characters. It is a chip, not a sentence.
+- Labels are one to five words. Put the recommendation first and suffix its
+  label with `(Recommended)`; each description carries the consequence and
+  strongest limitation.
+- There are no separate context, why, evidence, or recommendation fields. Keep
+  context before the call and fold the stake and evidence into `question`.
+- Do not add an Other option. The client supplies the free-form Other choice.
+- Carry a wider frontier across consecutive calls in the same round; never
+  drop a decision to fit the cap.
+
+Per-call limits differ:
+
+| Host | Questions per call | Options per question |
+|---|---|---|
+| Claude Code | one to four | two to four |
+| Codex | one to three | two or three |
+
+On Codex the tool belongs to the root thread; keep decision rounds there.
+
+Answers return inside the same call: as selected labels or explicit custom
+text on Claude Code, keyed by question `id` on Codex. Process them and
+continue in the current turn, never waiting for a new user message. A
+dismissal is not an answer: stop without implementing rather than choosing
+for the user.
 
 ## Processing answers
 

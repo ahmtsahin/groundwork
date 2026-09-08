@@ -17,7 +17,7 @@
       "sources": [
         {
           "kind": "repo",
-          "path": "codex/plugins/groundwork/skills/settle/SKILL.md"
+          "path": "plugin/skills/settle/SKILL.md"
         }
       ]
     },
@@ -28,7 +28,7 @@
       "sources": [
         {
           "kind": "derived",
-          "base": "plugins/groundwork/skills/settle/SKILL.md",
+          "base": "plugin/skills/settle/SKILL.md",
           "section": "## Native question tool",
           "replacement": "eval/hosts/text/native-question-tool.md"
         }
@@ -50,7 +50,7 @@
       "sources": [
         {
           "kind": "repo",
-          "path": "eval/variants/compact/SKILL.md"
+          "path": "plugin/skills/settle/SKILL.md"
         }
       ]
     },
@@ -64,7 +64,7 @@
       "sources": [
         {
           "kind": "repo",
-          "path": "eval/variants/interrogate/SKILL.md"
+          "path": "plugin/skills/settle/SKILL.md"
         }
       ]
     },
@@ -76,7 +76,7 @@
       "sources": [
         {
           "kind": "repo",
-          "path": "plugins/groundwork/skills/settle/SKILL.md"
+          "path": "plugin/skills/settle/SKILL.md"
         }
       ]
     },

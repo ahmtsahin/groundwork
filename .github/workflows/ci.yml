@@ -22,5 +22,3 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - name: Check generated package is committed
-        run: git diff --exit-code -- codex/plugins/groundwork

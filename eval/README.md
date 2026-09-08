@@ -17,7 +17,6 @@ make no model calls.
 
 ```sh
 codex features enable default_mode_request_user_input
-npm run build
 npm run eval:doctor
 ```
 
@@ -52,12 +51,12 @@ The simulator and judge run on Codex for both hosts.
 
 | Arm ID | Instructions | Channel |
 |---|---|---|
-| `settle` | Built Groundwork Codex package | Native |
+| `settle` | Groundwork skill on Codex | Native |
 | `settle-text` | Shared skill with a text-question adapter | Text |
 | `settle-compact` | Compact experimental variant | Native |
 | `settle-interrogate` | Experimental questioning variant | Native |
 | `no-skill` | Task alone on Codex | Text |
-| `settle-claude` | Groundwork Claude Code package | Native |
+| `settle-claude` | Groundwork skill on Claude Code | Native |
 | `no-skill-claude` | Task alone on Claude Code | Text |
 
 Every included instruction source is in this repository.

@@ -1,9 +1,9 @@
 # Installation
 
-Groundwork has one plugin for each host. Install it separately in Codex and
-Claude Code if you use both. The packages contain instructions and metadata;
-installing the plugin does not require Node.js, Python, an API key, or a
-running service.
+Groundwork is one plugin that Codex and Claude Code both load from the
+repository's `plugin/` folder. Install it in each host you use. The plugin contains
+instructions and metadata; installing it does not require Node.js, Python, an
+API key, or a running service. The optional skills CLI path below uses Node.js.
 
 ## From a local checkout
 
@@ -91,6 +91,21 @@ claude plugin install groundwork@groundwork
 The marketplace and plugin are both named `groundwork`. Start a new task or
 session after installation.
 
+### Skills CLI
+
+The [`skills` CLI](https://skills.sh/ahmtsahin/groundwork/settle) copies the
+skill into the current project without either plugin system. It needs Node.js
+and works for Codex, Claude Code, and other agents that read `SKILL.md` files:
+
+```sh
+npx skills add ahmtsahin/groundwork
+```
+
+Select the agents you use when asked. Codex still needs the
+`default_mode_request_user_input` feature and invokes `$settle`; Claude Code
+invokes `/settle` instead of `/groundwork:settle`. Add `--global` to install
+for every project instead of the current one.
+
 ## Verify the installation
 
 Use `codex plugin list` or `claude plugin list` to confirm Groundwork is
@@ -98,8 +113,9 @@ installed. In a new task, invoke the skill with a request containing a real
 product decision. After inspecting the repository, it should show a native
 question form with options and a free-form answer control.
 
-A bare `$settle` or `/groundwork:settle` should start discovery, inspect the
-repository, and reach a native question.
+A bare `$settle`, `/groundwork:settle`, or `/settle` for a skills CLI
+install should start discovery, inspect the repository, and reach a native
+question.
 
 ## Update
 
@@ -124,6 +140,9 @@ For a **local installation**, first update the checkout with
 Then run `codex plugin add groundwork@groundwork`, or the two Claude Code
 update commands above. Use a new task or session to pick up the update.
 
+For a **skills CLI installation**, run `npx skills update settle` in the
+project, or add `--global` for a global installation.
+
 ## Uninstall
 
 Codex:
@@ -136,6 +155,12 @@ Claude Code:
 
 ```sh
 claude plugin uninstall groundwork@groundwork
+```
+
+Skills CLI:
+
+```sh
+npx skills remove settle
 ```
 
 To remove the catalog as well, run `codex plugin marketplace remove groundwork`

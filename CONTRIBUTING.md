@@ -14,8 +14,8 @@ npm run check
 npm test
 ```
 
-These checks make no model calls. `npm test` builds the Codex package before
-running package, native-input, workflow, and evaluation-harness tests.
+These checks make no model calls. `npm test` runs the package, native-input,
+workflow, and evaluation-harness tests.
 
 If a Codex CLI is installed, run these additional checks:
 
@@ -31,25 +31,25 @@ The doctor checks native Default-mode input support and configuration.
 ## Package layout
 
 ```text
-.claude-plugin/marketplace.json          Claude Code catalog
-.agents/plugins/marketplace.json         Codex catalog
-plugins/groundwork/                      Shared skill and Claude Code package
-scripts/hosts/codex/                     Codex question adapter and metadata
-codex/plugins/groundwork/                Generated Codex package, committed
-scripts/build.mjs                        Deterministic Codex package build
+.claude-plugin/marketplace.json          Claude Code catalog, pointing at plugin/
+.agents/plugins/marketplace.json         Codex catalog, pointing at plugin/
+plugin/.claude-plugin/plugin.json        Claude Code plugin manifest
+plugin/.codex-plugin/plugin.json         Codex plugin manifest and display metadata
+plugin/skills/settle/SKILL.md            The skill, loaded by both hosts
+plugin/skills/settle/agents/openai.yaml  Codex skill metadata
+scripts/                                 Doctor, probe, and section helpers
 test/                                    Package and behavior checks
 eval/                                    Optional local evaluation harness
 docs/                                    Installation, usage, and demo assets
 ```
 
-Edit `plugins/groundwork/skills/settle/SKILL.md` for shared behavior. Edit
-`scripts/hosts/codex/native-question-tool.md` for Codex's native question
-adapter. Codex skill metadata lives in `scripts/hosts/codex/agents/`, and
-plugin display metadata lives in `scripts/hosts/codex/plugin-interface.json`.
-
-Run `npm run build` and include the generated `codex/plugins/groundwork/`
-files in your change. Do not edit the generated skill directly. Tests enforce
-that only the native-question section differs between host skill bodies.
+The `plugin/` folder is the plugin for both hosts, so there is no generated
+package and no build step, and hosts copy only that folder when they install.
+Edit `plugin/skills/settle/SKILL.md` for behavior. Its
+`## Native question tool` section is the only place that names a host's
+question tool; it covers Claude Code and Codex side by side, and tests reject
+host tool names anywhere else in the skill. The eval harness swaps that
+section for a text adapter to build its text baseline.
 
 ## Verify behavior changes
 
@@ -67,14 +67,12 @@ Keep generated runs and machine-specific configuration out of commits.
 ## Preparing a release
 
 Keep the version in `package.json`, `package-lock.json`,
-`plugins/groundwork/.claude-plugin/plugin.json`, and
-`.claude-plugin/marketplace.json` consistent. The build copies the shared
-manifest's release version into the Codex manifest. Update the expected
+`plugin/.claude-plugin/plugin.json`, `plugin/.codex-plugin/plugin.json`,
+and `.claude-plugin/marketplace.json` consistent, and update the expected
 version in the package contract test when changing the release version.
 
-Run the local checks, review the generated package, and confirm the install
-and update commands against the supported host CLIs. CI checks both Linux
-and Windows and rejects changes that leave generated Codex files out of date.
+Run the local checks and confirm the install and update commands against the
+supported host CLIs. CI runs the same checks on Linux and Windows.
 
 Record the release in `CHANGELOG.md`: move the entries under `Unreleased` to a
 new version heading with the date, and add the comparison link at the bottom.

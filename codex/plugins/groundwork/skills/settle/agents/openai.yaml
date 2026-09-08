@@ -1,8 +1,0 @@
-interface:
-  display_name: "Settle"
-  short_description: "Settle every decision before code"
-  brand_color: "#4F46E5"
-  default_prompt: "Use $settle to inspect the repository, then work in rounds until nothing material is left assumed, and implement only the decision-complete result."
-
-policy:
-  allow_implicit_invocation: false

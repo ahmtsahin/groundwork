@@ -6,20 +6,15 @@ import { fileURLToPath } from "node:url";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, "..");
-const sharedPluginRoot = path.join(repositoryRoot, "plugins", "groundwork");
-const codexPluginRoot = path.join(
-  repositoryRoot,
-  "codex",
-  "plugins",
-  "groundwork"
-);
-const codexHostRoot = path.join(repositoryRoot, "scripts", "hosts", "codex");
-const sharedSkillDirectory = path.join(sharedPluginRoot, "skills", "settle");
-const codexSkillDirectory = path.join(codexPluginRoot, "skills", "settle");
+const pluginRoot = path.join(repositoryRoot, "plugin");
+const skillDirectory = path.join(pluginRoot, "skills", "settle");
+const skillFile = path.join(skillDirectory, "SKILL.md");
 
 const EXPECTED_VERSION = "0.4.0";
 
-// The shared body and every host build carry these sections in this order.
+// The skill carries these sections in this order. The eval harness swaps the
+// host section by heading to build its text baseline, so the order is a
+// contract, not a style choice.
 const SECTION_ORDER = [
   "## Bare invocation",
   "## Ground yourself first",
@@ -85,47 +80,39 @@ function sections(markdown: string): Map<string, string> {
   return result;
 }
 
-async function loadSkills() {
-  const shared = await readText(path.join(sharedSkillDirectory, "SKILL.md"));
-  const codex = await readText(path.join(codexSkillDirectory, "SKILL.md"));
+test("the plugin folder is a skill-only plugin for both hosts", async () => {
+  const claude = await readJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"));
+  const codex = await readJson(path.join(pluginRoot, ".codex-plugin", "plugin.json"));
 
-  return {
-    shared,
-    codex,
-    sharedSections: sections(shared),
-    codexSections: sections(codex)
-  };
-}
+  assert.equal(claude.name, "groundwork");
+  assert.equal(codex.name, "groundwork");
+  assert.equal(claude.license, "MIT");
+  assert.equal(codex.license, "MIT");
+  assert.equal(codex.description, claude.description);
+  assert.equal(codex.skills, "./skills/");
+  assert.equal((codex.interface as { brandColor: string }).brandColor, "#4F46E5");
+  assert.deepEqual(Object.keys(claude).sort(), [
+    "author",
+    "description",
+    "keywords",
+    "license",
+    "name",
+    "version"
+  ]);
 
-test("the Codex package is skill-only", async () => {
-  const manifest = await readJson(
-    path.join(codexPluginRoot, ".codex-plugin", "plugin.json")
-  );
-  const entries = (await readdir(codexPluginRoot)).sort();
-  const files = await listFiles(codexPluginRoot);
-
-  assert.deepEqual(entries, [".codex-plugin", "skills"]);
-  for (const file of files) {
-    assert.match(
-      path.extname(file),
-      /^\.(json|md|yaml)$/,
-      `Codex package ships executable or unexpected content: ${file}`
-    );
+  // Hosts copy the plugin folder as a whole, so it holds manifests, the
+  // skill, and its metadata, and nothing executable.
+  assert.deepEqual((await readdir(pluginRoot)).sort(), [".claude-plugin", ".codex-plugin", "skills"]);
+  assert.deepEqual(await listFiles(skillDirectory), ["SKILL.md", "agents/openai.yaml"]);
+  for (const file of await listFiles(pluginRoot)) {
+    assert.match(path.extname(file), /^\.(json|md|yaml)$/, `unexpected plugin content: ${file}`);
   }
-
-  assert.equal(manifest.name, "groundwork");
-  assert.equal(manifest.version, EXPECTED_VERSION);
-  assert.equal(manifest.skills, "./skills/");
-  assert.equal(manifest.license, "MIT");
-  assert.equal(
-    (manifest.interface as { brandColor: string }).brandColor,
-    "#4F46E5"
-  );
 });
 
-test("the repository declares no plugin runtime dependencies", async () => {
+test("the repository declares no plugin runtime dependencies or install-time scripts", async () => {
   const packageJson = await readJson(path.join(repositoryRoot, "package.json"));
   const devDependencies = packageJson.devDependencies as Record<string, string>;
+  const scripts = packageJson.scripts as Record<string, string>;
 
   assert.equal(packageJson.version, EXPECTED_VERSION);
   assert.equal(packageJson.dependencies, undefined);
@@ -134,30 +121,31 @@ test("the repository declares no plugin runtime dependencies", async () => {
     "tsx",
     "typescript"
   ]);
+  assert.equal(scripts.build, undefined, "the plugin has no build step");
+  for (const hook of ["preinstall", "install", "postinstall", "prepare", "prepublish"]) {
+    assert.equal(scripts[hook], undefined, `${hook} would run on install`);
+  }
+  for (const filename of ["package.json", "package-lock.json"]) {
+    await assert.rejects(access(path.join(pluginRoot, filename)), /ENOENT/);
+  }
 });
 
 test("every manifest agrees on the package version", async () => {
-  const shared = await readJson(
-    path.join(sharedPluginRoot, ".claude-plugin", "plugin.json")
-  );
-  const marketplace = await readJson(
-    path.join(repositoryRoot, ".claude-plugin", "marketplace.json")
-  );
+  const claude = await readJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"));
+  const codex = await readJson(path.join(pluginRoot, ".codex-plugin", "plugin.json"));
+  const marketplace = await readJson(path.join(repositoryRoot, ".claude-plugin", "marketplace.json"));
+  const lock = await readJson(path.join(repositoryRoot, "package-lock.json"));
   const listed = (marketplace.plugins as Array<{ version: string }>)[0];
+  const lockRoot = (lock.packages as Record<string, { version: string }>)[""];
 
-  assert.equal(shared.version, EXPECTED_VERSION);
+  assert.equal(claude.version, EXPECTED_VERSION);
+  assert.equal(codex.version, EXPECTED_VERSION);
   assert.equal(listed.version, EXPECTED_VERSION);
-  assert.deepEqual(Object.keys(shared).sort(), [
-    "author",
-    "description",
-    "keywords",
-    "license",
-    "name",
-    "version"
-  ]);
+  assert.equal(lock.version, EXPECTED_VERSION);
+  assert.equal(lockRoot.version, EXPECTED_VERSION);
 });
 
-test("both marketplaces live at the repository root and point at their host package", async () => {
+test("both marketplaces live at the repository root and point at the plugin folder", async () => {
   const claudeMarketplace = await readJson(
     path.join(repositoryRoot, ".claude-plugin", "marketplace.json")
   );
@@ -166,8 +154,9 @@ test("both marketplaces live at the repository root and point at their host pack
   );
 
   const claudeEntry = (claudeMarketplace.plugins as Array<{ name: string; source: string }>)[0];
+  assert.equal(claudeMarketplace.name, "groundwork");
   assert.equal(claudeEntry.name, "groundwork");
-  assert.equal(path.resolve(repositoryRoot, claudeEntry.source), sharedPluginRoot);
+  assert.equal(path.resolve(repositoryRoot, claudeEntry.source), pluginRoot);
 
   const codexEntry = (
     codexMarketplace.plugins as Array<{ name: string; source: { source: string; path: string } }>
@@ -175,80 +164,45 @@ test("both marketplaces live at the repository root and point at their host pack
   assert.equal(codexMarketplace.name, "groundwork");
   assert.equal(codexEntry.name, "groundwork");
   assert.equal(codexEntry.source.source, "local");
-  assert.equal(path.resolve(repositoryRoot, codexEntry.source.path), codexPluginRoot);
-  await access(path.join(codexPluginRoot, ".codex-plugin", "plugin.json"));
+  assert.equal(path.resolve(repositoryRoot, codexEntry.source.path), pluginRoot);
+
+  await access(path.join(pluginRoot, ".claude-plugin", "plugin.json"));
+  await access(path.join(pluginRoot, ".codex-plugin", "plugin.json"));
 });
 
-test("both hosts share one skill body and differ only in the host question section", async () => {
-  const { sharedSections, codexSections } = await loadSkills();
+test("the skill keeps its section order and names host question tools only in the host section", async () => {
+  const skill = await readText(skillFile);
+  const table = sections(skill);
 
-  assert.deepEqual([...sharedSections.keys()], SECTION_ORDER);
-  assert.deepEqual([...codexSections.keys()], SECTION_ORDER);
+  assert.match(skill, /^name: settle$/m);
+  assert.deepEqual([...table.keys()], SECTION_ORDER);
 
-  for (const heading of SECTION_ORDER) {
-    if (heading === HOST_SECTION) {
-      assert.notEqual(
-        sharedSections.get(heading),
-        codexSections.get(heading),
-        "host question sections must differ between hosts"
-      );
-    } else {
-      assert.equal(
-        sharedSections.get(heading),
-        codexSections.get(heading),
-        `section drifted between hosts: ${heading}`
-      );
-    }
-  }
-});
+  const host = table.get(HOST_SECTION) ?? "";
+  assert.match(host, /AskUserQuestion/);
+  assert.match(host, /request_user_input/);
+  assert.match(host, /default_mode_request_user_input/);
 
-test("each host section names only its own native question tool", async () => {
-  const { shared, codex, sharedSections, codexSections } = await loadSkills();
-  const partial = (
-    await readText(path.join(codexHostRoot, "native-question-tool.md"))
-  ).trim();
-
-  assert.ok(sharedSections.get(HOST_SECTION)?.includes("AskUserQuestion"));
-  assert.doesNotMatch(shared, /request_user_input/);
-
-  assert.equal(codexSections.get(HOST_SECTION), partial);
-  assert.ok(partial.includes("request_user_input"));
-  assert.ok(partial.includes("default_mode_request_user_input"));
-  assert.doesNotMatch(codex, /AskUserQuestion/);
-
-  // The shared body outside the host section is host-neutral, so the bare
-  // invocation contract reads the same on every host.
-  for (const [heading, text] of sharedSections) {
+  // Everything outside the host section reads the same on every host.
+  for (const [heading, text] of table) {
     if (heading !== HOST_SECTION) {
       assert.doesNotMatch(text, /AskUserQuestion|request_user_input/, heading);
     }
   }
 });
 
-test("the decision classes survive in both packages", async () => {
-  const { sharedSections, codexSections } = await loadSkills();
+test("the decision classes survive in the skill", async () => {
+  const probes = sections(await readText(skillFile)).get("## What is worth asking") ?? "";
 
-  for (const table of [sharedSections, codexSections]) {
-    const probes = table.get("## What is worth asking") ?? "";
-
-    for (const decisionClass of DECISION_CLASSES) {
-      assert.ok(
-        probes.includes(`| ${decisionClass} |`),
-        `decision class missing: ${decisionClass}`
-      );
-    }
+  for (const decisionClass of DECISION_CLASSES) {
+    assert.ok(probes.includes(`| ${decisionClass} |`), `decision class missing: ${decisionClass}`);
   }
 });
 
-test("Codex skill metadata ships only in the Codex package", async () => {
-  const source = await readText(path.join(codexHostRoot, "agents", "openai.yaml"));
-  const built = await readText(path.join(codexSkillDirectory, "agents", "openai.yaml"));
+test("Codex skill metadata sits inside the skill folder", async () => {
+  const metadata = await readText(path.join(skillDirectory, "agents", "openai.yaml"));
 
-  assert.equal(built, source);
-  await assert.rejects(
-    access(path.join(sharedSkillDirectory, "agents", "openai.yaml")),
-    /ENOENT/
-  );
+  assert.match(metadata, /display_name: "Settle"/);
+  assert.match(metadata, /allow_implicit_invocation: false/);
 });
 
 test("every native Codex eval arm enables the Default-mode feature", async () => {
@@ -258,7 +212,7 @@ test("every native Codex eval arm enables the Default-mode feature", async () =>
     host?: string;
     channel: string;
     enableFeatures?: string[];
-    sources: unknown[];
+    sources: Array<{ kind: string; path?: string }>;
   }>).filter((arm) => (arm.host ?? "codex") === "codex");
   const nativeArms = codexArms.filter((arm) => arm.channel === "native");
 
@@ -266,6 +220,9 @@ test("every native Codex eval arm enables the Default-mode feature", async () =>
   for (const arm of nativeArms) {
     assert.deepEqual(arm.enableFeatures, ["default_mode_request_user_input"]);
   }
+  assert.deepEqual(nativeArms.find((arm) => arm.id === "settle")?.sources, [
+    { kind: "repo", path: "plugin/skills/settle/SKILL.md" }
+  ]);
 
   const textArms = codexArms.filter((arm) => arm.channel === "text");
 
@@ -289,7 +246,7 @@ test("every native Codex eval arm enables the Default-mode feature", async () =>
   }
 });
 
-test("Claude Code eval arms run the Claude package and never enable a Codex feature", async () => {
+test("Claude Code eval arms run the same skill file and never enable a Codex feature", async () => {
   const arms = await readJson(path.join(repositoryRoot, "eval", "arms.json"));
   const claudeArms = (arms.arms as Array<{
     id: string;
@@ -307,23 +264,10 @@ test("Claude Code eval arms run the Claude package and never enable a Codex feat
   const settle = claudeArms.find((arm) => arm.id === "settle-claude");
   assert.ok(settle, "settle-claude arm must exist");
   assert.equal(settle.channel, "native");
-  assert.deepEqual(settle.sources, [
-    { kind: "repo", path: "plugins/groundwork/skills/settle/SKILL.md" }
-  ]);
+  assert.deepEqual(settle.sources, [{ kind: "repo", path: "plugin/skills/settle/SKILL.md" }]);
   assert.deepEqual(claudeArms.find((arm) => arm.id === "no-skill-claude")?.sources, []);
 
   const claude = arms.claude as { defaultModel?: string; maxBudgetUsd?: number } | undefined;
   assert.equal(claude?.defaultModel, "opus");
   assert.ok((claude?.maxBudgetUsd ?? 0) > 0);
-});
-
-test("host package roots do not trigger install-time dependency resolution", async () => {
-  for (const pluginRoot of [sharedPluginRoot, codexPluginRoot]) {
-    for (const filename of ["package.json", "package-lock.json"]) {
-      await assert.rejects(access(path.join(pluginRoot, filename)), /ENOENT/);
-    }
-  }
-
-  await assert.doesNotReject(access(path.join(repositoryRoot, "package.json")));
-  await assert.doesNotReject(access(path.join(repositoryRoot, "package-lock.json")));
 });

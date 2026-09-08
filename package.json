@@ -9,9 +9,8 @@
     "node": ">=22.17.0"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
     "check": "tsc --noEmit",
-    "test": "npm run build && node --import tsx --test test/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "smoke": "node test/native-app-server-smoke.mjs",
     "native:doctor": "node scripts/native-mode-doctor.mjs",
     "native:probe": "node scripts/native-live-probe.mjs",

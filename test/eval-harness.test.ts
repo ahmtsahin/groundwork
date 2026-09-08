@@ -17,14 +17,7 @@ import { formatReport, scoreRun } from "../eval/src/score.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, "..");
-const sharedSkillFile = path.join(
-  repositoryRoot,
-  "plugins",
-  "groundwork",
-  "skills",
-  "settle",
-  "SKILL.md"
-);
+const sharedSkillFile = path.join(repositoryRoot, "plugin", "skills", "settle", "SKILL.md");
 const WRAPPER_END = "=== SKILL ===";
 const HOST_SECTION = "## Native question tool";
 

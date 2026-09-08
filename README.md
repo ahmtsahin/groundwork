@@ -72,6 +72,20 @@ Start a **new Claude Code session** in your project and enter:
 
 This uses Claude Code's built-in `AskUserQuestion` form.
 
+### Skills CLI
+
+The [`skills` CLI](https://skills.sh/ahmtsahin/groundwork/settle) installs the
+same skill into a project without either plugin system, for Codex, Claude
+Code, and other agents that read `SKILL.md` files:
+
+```sh
+npx skills add ahmtsahin/groundwork
+```
+
+Select the agents you use when asked. Codex still needs the feature flag above
+and invokes `$settle`; Claude Code invokes `/settle` instead of
+`/groundwork:settle`.
+
 [Updates, uninstall, and troubleshooting](docs/installation.md)
 
 ## Usage
@@ -151,10 +165,10 @@ npm run check
 npm test
 ```
 
-The shared skill lives in `plugins/groundwork/skills/settle/SKILL.md`.
-`npm run build` generates the committed Codex package with its own native
-question adapter. Tests check that both hosts retain the same decision
-workflow. See [CONTRIBUTING.md](CONTRIBUTING.md) for package checks and the
+The skill lives in `plugin/skills/settle/SKILL.md`, and both hosts load the
+`plugin/` folder as the plugin; there is no build step. Tests check that the manifests agree
+and that the skill names a host's question tool only in its native question
+section. See [CONTRIBUTING.md](CONTRIBUTING.md) for package checks and the
 [evaluation guide](eval/README.md) for optional behavioral runs.
 
 ## License

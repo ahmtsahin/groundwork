@@ -7,6 +7,19 @@ before 0.4.0 were private iterations and are not listed.
 
 ## [Unreleased]
 
+### Changed
+
+- One skill file at `plugin/skills/settle/SKILL.md` now serves both hosts;
+  its native question section covers Claude Code and Codex side by side. The
+  `plugin/` folder is the plugin for both marketplaces, the generated Codex
+  package and the build step are gone, and `agents/openai.yaml` lives with
+  the skill.
+
+### Added
+
+- Installation through the skills CLI (`npx skills add ahmtsahin/groundwork`),
+  which installs the same skill for Codex, Claude Code, and other agents.
+
 ## [0.4.0] - 2026-09-08
 
 First public release.
