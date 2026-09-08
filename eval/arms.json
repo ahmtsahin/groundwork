@@ -8,7 +8,7 @@
   "wrapper": "The following skill is active for this task. Follow it exactly.\n\n=== SKILL ===",
   "arms": [
     {
-      "id": "clarify-then-code",
+      "id": "settle",
       "label": "settle (native)",
       "channel": "native",
       "enableFeatures": [
@@ -22,7 +22,7 @@
       ]
     },
     {
-      "id": "clarify-then-code-text",
+      "id": "settle-text",
       "label": "settle (text)",
       "channel": "text",
       "sources": [
@@ -41,7 +41,7 @@
       "sources": []
     },
     {
-      "id": "clarify-then-code-compact",
+      "id": "settle-compact",
       "label": "settle (compact)",
       "channel": "native",
       "enableFeatures": [
@@ -55,7 +55,7 @@
       ]
     },
     {
-      "id": "clarify-then-code-interrogate",
+      "id": "settle-interrogate",
       "label": "settle (interrogate)",
       "channel": "native",
       "enableFeatures": [

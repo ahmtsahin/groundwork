@@ -1,9 +1,9 @@
 ---
-name: clarify-then-code-compact
-description: Experimental compression of clarify-then-code. Same principles, roughly a fifth of the words, single file, no references. Exists to test whether the full skill's instruction volume is what stops it following its own rules.
+name: settle-compact
+description: Experimental compression of the settle skill. Same principles, roughly a fifth of the words, single file, no references. Exists to test whether the full skill's instruction volume is what stops it following its own rules.
 ---
 
-# Clarify Then Code
+# Settle
 
 Turn an underspecified coding request into a decision-complete implementation,
 without making the user answer anything the repository can answer.

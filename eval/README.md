@@ -29,7 +29,7 @@ and scenario fixtures. It prepares local instruction caches in `eval/.arms/`.
 The native Codex package:
 
 ```sh
-npm run eval -- --scenario stale-exports --arms clarify-then-code
+npm run eval -- --scenario stale-exports --arms settle
 ```
 
 The native Claude Code package, using the same simulator and judge:
@@ -41,7 +41,7 @@ npm run eval -- --scenario stale-exports --arms settle-claude --claude-model opu
 Compare the native package with its text variant and no-skill control:
 
 ```sh
-npm run eval -- --scenario bulk-rename --arms clarify-then-code,clarify-then-code-text,no-skill --repeats 3
+npm run eval -- --scenario bulk-rename --arms settle,settle-text,no-skill --repeats 3
 ```
 
 Select a configured model with `--model`; Claude Code's agent model uses
@@ -52,17 +52,15 @@ The simulator and judge run on Codex for both hosts.
 
 | Arm ID | Instructions | Channel |
 |---|---|---|
-| `clarify-then-code` | Built Groundwork Codex package | Native |
-| `clarify-then-code-text` | Shared skill with a text-question adapter | Text |
-| `clarify-then-code-compact` | Compact experimental variant | Native |
-| `clarify-then-code-interrogate` | Experimental questioning variant | Native |
+| `settle` | Built Groundwork Codex package | Native |
+| `settle-text` | Shared skill with a text-question adapter | Text |
+| `settle-compact` | Compact experimental variant | Native |
+| `settle-interrogate` | Experimental questioning variant | Native |
 | `no-skill` | Task alone on Codex | Text |
 | `settle-claude` | Groundwork Claude Code package | Native |
 | `no-skill-claude` | Task alone on Claude Code | Text |
 
-The `clarify-then-code` IDs are historical internal identifiers retained for
-local result compatibility. Every included instruction source is in this
-repository.
+Every included instruction source is in this repository.
 
 ## Scenarios
 

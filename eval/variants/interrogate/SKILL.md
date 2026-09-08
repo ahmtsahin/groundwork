@@ -1,9 +1,9 @@
 ---
-name: clarify-then-code-interrogate
+name: settle-interrogate
 description: The compact variant with one change: implementation is not authorized until the frontier is genuinely empty and the user has confirmed. Exists to test whether the freedom to implement early is what makes the skill shallow.
 ---
 
-# Clarify Then Code
+# Settle
 
 Turn an underspecified coding request into a decision-complete implementation,
 without making the user answer anything the repository can answer.

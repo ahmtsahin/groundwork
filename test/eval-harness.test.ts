@@ -210,9 +210,9 @@ test("the first prompt carries the task alone when an arm has no instructions", 
 });
 
 test("the no-skill control and the text variant resolve from the shared skill", async () => {
-  const { arms } = await prepareArms({ only: ["no-skill", "clarify-then-code-text"] });
+  const { arms } = await prepareArms({ only: ["no-skill", "settle-text"] });
   const noSkill = arms.find((arm: { id: string }) => arm.id === "no-skill");
-  const textArm = arms.find((arm: { id: string }) => arm.id === "clarify-then-code-text");
+  const textArm = arms.find((arm: { id: string }) => arm.id === "settle-text");
 
   assert.ok(noSkill?.ok, "no-skill arm must resolve");
   assert.equal(noSkill.channel, "text");

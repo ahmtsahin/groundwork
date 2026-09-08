@@ -340,7 +340,7 @@ function createIsolatedCodexHome() {
     );
   }
 
-  const isolatedHome = mkdtempSync(path.join(os.tmpdir(), "ctc-native-home-"));
+  const isolatedHome = mkdtempSync(path.join(os.tmpdir(), "groundwork-native-home-"));
   copyFileSync(authSource, path.join(isolatedHome, "auth.json"));
   return isolatedHome;
 }

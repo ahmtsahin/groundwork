@@ -8,7 +8,7 @@ const MAX_CAPTURED_BYTES = 20_000;
 
 /** Copies a scenario workspace to a throwaway directory so runs never collide. */
 export function materializeWorkspace(sourceDirectory, label) {
-  const target = mkdtempSync(path.join(os.tmpdir(), `ctc-eval-${label}-`));
+  const target = mkdtempSync(path.join(os.tmpdir(), `groundwork-eval-${label}-`));
   cpSync(sourceDirectory, target, { recursive: true });
   return target;
 }

@@ -61,7 +61,7 @@ export async function runStructured(prompt, schema, options = {}) {
     throw new Error("No Codex CLI found.");
   }
 
-  const workspace = mkdtempSync(path.join(os.tmpdir(), `ctc-${options.label ?? "json"}-`));
+  const workspace = mkdtempSync(path.join(os.tmpdir(), `groundwork-${options.label ?? "json"}-`));
   const schemaPath = path.join(workspace, "schema.json");
   const outputPath = path.join(workspace, "result.json");
 
