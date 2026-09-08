@@ -1,0 +1,9 @@
+{
+  "id": "report-delivery",
+  "language": "en",
+  "workspace": "workspace",
+  "persona": "persona.md",
+  "rubric": "rubric.json",
+  "request": "Deliver reportkit output to the BI team automatically instead of sending it manually. Implement this.",
+  "notes": "Deliberately vague and deliberately architectural: there is no delivery flow to extend, several solution families are viable, and the repository makes the shared-drive drop look like the obvious extension. The persona knows the shared drive is being retired and that BI already exposes a token-protected HTTP intake, so a session that never compares approaches or never asks builds the wrong thing well."
+}

@@ -1,0 +1,20 @@
+{
+  "name": "groundwork",
+  "interface": {
+    "displayName": "Groundwork"
+  },
+  "plugins": [
+    {
+      "name": "groundwork",
+      "source": {
+        "source": "local",
+        "path": "./codex/plugins/groundwork"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

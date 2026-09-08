@@ -1,0 +1,8 @@
+{
+  "name": "reportkit",
+  "version": "2.4.0",
+  "private": true,
+  "type": "module",
+  "bin": { "reportkit": "./src/cli.js" },
+  "scripts": { "test": "node --test test/*.test.js" }
+}

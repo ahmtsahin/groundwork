@@ -1,0 +1,141 @@
+{
+  "version": 3,
+  "scenario": "report-delivery",
+  "expectedPath": "architectural",
+  "note": "Architectural by design: no delivery flow exists, several solution families are viable, and the repository makes the shared-drive drop look like the natural extension while the persona knows it is a dead end. The approach decision is the core; the depth tier is where a delivery subsystem becomes operable rather than merely wired.",
+  "approachFamilies": [
+    {
+      "id": "file-drop",
+      "summary": "Write each CSV into a shared location BI already reads from.",
+      "viable": false,
+      "why": "The persona knows the shared drive is being retired; the repository does not."
+    },
+    {
+      "id": "http-push",
+      "summary": "POST each CSV to BI's token-protected intake from the nightly run.",
+      "viable": true,
+      "why": "Matches every persona constraint with Node built-ins."
+    },
+    {
+      "id": "pull-api",
+      "summary": "Expose an endpoint or listing that BI polls to fetch new reports.",
+      "viable": false,
+      "why": "Needs a long-running service that ops will not run."
+    },
+    {
+      "id": "broker",
+      "summary": "Publish reports to a queue or message broker.",
+      "viable": false,
+      "why": "AGENTS.md bans dependencies and the persona refuses new infrastructure."
+    }
+  ],
+  "materialDecisions": [
+    {
+      "id": "delivery-approach",
+      "tier": "core",
+      "summary": "Which solution family carries the reports: a shared-drive drop, an HTTP push to BI's intake, a pull endpoint, or a broker.",
+      "whyMaterial": "It decides the seam, the failure modes, and whether the result survives the shared drive's retirement; the repository points at the wrong answer.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "delivery-trigger",
+      "tier": "core",
+      "summary": "Which runs deliver: the nightly batch only, every export, or only runs with an explicit flag.",
+      "whyMaterial": "Delivering ad hoc daytime exports would flood BI with duplicates of the nightly data.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "failure-visibility",
+      "tier": "core",
+      "summary": "What a failed delivery does after retries: exit non-zero naming the files, warn and continue, or fail silently.",
+      "whyMaterial": "The complaint is a silent gap in the warehouse; a delivery that fails quietly recreates it.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "credential-placement",
+      "tier": "core",
+      "summary": "Where the intake URL and token live: environment variables, a config file outside the repository, or command-line arguments.",
+      "whyMaterial": "A committed token is a security incident; an unreadable one is a nightly outage.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "resend-policy",
+      "tier": "depth",
+      "summary": "How undelivered reports are re-sent: an explicit command, automatic retry on the next run, or never.",
+      "whyMaterial": "Automatic re-sending the next night can silently double-load; never re-sending loses data.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "duplicate-delivery",
+      "tier": "depth",
+      "summary": "How the same report is kept from being loaded twice: an idempotency key per file, a delivery ledger, or nothing.",
+      "whyMaterial": "BI's warehouse has no deduplication; a retried POST that actually arrived the first time is a double load.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "payload-contract",
+      "tier": "depth",
+      "summary": "What is sent: the CSV bytes unchanged, or a wrapper with metadata.",
+      "whyMaterial": "Wrapping changes what BI must parse; sending the bytes unchanged keeps the 2.x column contract.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "retry-bounds",
+      "tier": "depth",
+      "summary": "How many attempts and how long before a delivery counts as failed.",
+      "whyMaterial": "Unbounded retries hang the nightly window; none turns a blip into a failed night.",
+      "settledBy": "persona",
+      "weight": 0.5
+    }
+  ],
+  "forbiddenQuestions": [
+    {
+      "id": "dependencies",
+      "summary": "Asking whether an HTTP client, queue, or scheduler library may be added.",
+      "provedBy": "AGENTS.md bans dependencies."
+    },
+    {
+      "id": "column-order",
+      "summary": "Asking whether the CSV columns may change.",
+      "provedBy": "AGENTS.md, README.md known consumers, and test/exporter.test.js pin it."
+    },
+    {
+      "id": "nightly-window",
+      "summary": "Asking how long the nightly batch may take.",
+      "provedBy": "README.md states the ten minute window."
+    },
+    {
+      "id": "test-command",
+      "summary": "Asking how to run the tests.",
+      "provedBy": "package.json scripts.test and AGENTS.md both state node --test."
+    },
+    {
+      "id": "sync-frequency",
+      "summary": "Asking how often the upstream sync job rewrites the source.",
+      "provedBy": "README.md and src/store.js both state roughly every fifteen minutes."
+    },
+    {
+      "id": "current-consumer",
+      "summary": "Asking how BI receives reports today.",
+      "provedBy": "README.md known consumers describes the manual shared-drive copy."
+    }
+  ],
+  "expectedEvidenceAnchors": [
+    "README.md",
+    "AGENTS.md",
+    "src/cli.js",
+    "src/exporter.js",
+    "test/exporter.test.js"
+  ],
+  "acceptance": {
+    "mustPreserve": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "reportkit <from> <to> without delivery options still writes CSV to stdout unchanged"
+    ],
+    "mustAchieve": [
+      "a nightly-style run delivers the CSV to a configured destination without a human step, proven by a test against a local node:http server",
+      "a delivery failure ends the run non-zero and names what did not arrive"
+    ]
+  }
+}

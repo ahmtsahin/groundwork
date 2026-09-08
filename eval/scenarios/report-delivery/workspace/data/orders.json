@@ -1,0 +1,5 @@
+[
+  { "id": "o-1001", "placedAt": "2026-01-02", "total": 149.9, "status": "paid" },
+  { "id": "o-1002", "placedAt": "2026-01-03", "total": 32.0, "status": "refunded" },
+  { "id": "o-1003", "placedAt": "2026-01-03", "total": 87.5, "status": "paid" }
+]

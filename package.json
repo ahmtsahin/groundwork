@@ -1,0 +1,27 @@
+{
+  "name": "groundwork",
+  "version": "0.4.0",
+  "description": "Groundwork: a Claude Code and Codex plugin whose settle skill closes every material decision through host-native question rounds before implementing.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.17.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node --import tsx --test test/*.test.ts",
+    "smoke": "node test/native-app-server-smoke.mjs",
+    "native:doctor": "node scripts/native-mode-doctor.mjs",
+    "native:probe": "node scripts/native-live-probe.mjs",
+    "eval:doctor": "node eval/src/run.mjs doctor",
+    "eval": "node eval/src/run.mjs run",
+    "validate": "npm run check && npm test && npm run smoke"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.2"
+  }
+}

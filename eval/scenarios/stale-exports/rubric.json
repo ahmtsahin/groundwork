@@ -1,0 +1,118 @@
+{
+  "version": 2,
+  "scenario": "stale-exports",
+  "expectedPath": "bounded",
+  "note": "Depth decisions were derived by reading what a deep interrogation actually surfaced on this scenario. A session that settles only the core tier is correct but shallow; the depth tier is where 'grill me thoroughly' is either true or marketing.",
+  "materialDecisions": [
+    {
+      "id": "freshness-scope",
+      "tier": "core",
+      "summary": "Whether ad hoc runs get fresher data than the nightly batch, or both change together.",
+      "whyMaterial": "It decides whether the fix is a per-invocation choice or a global TTL change, and the README explicitly records it as undecided.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "staleness-bound",
+      "tier": "core",
+      "summary": "How stale an ad hoc export may be before it counts as wrong.",
+      "whyMaterial": "Without a bound there is no acceptance criterion and no way to prove the fix works.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "nightly-budget",
+      "tier": "core",
+      "summary": "Whether the nightly batch may keep serving cached rows to stay inside its ten minute window.",
+      "whyMaterial": "Removing caching outright would break the nightly job; this is the constraint that shapes the whole design.",
+      "settledBy": "persona",
+      "repositoryHint": "README.md states the ten minute window and that the 2.1.0 cache is what keeps it there."
+    },
+    {
+      "id": "interface-shape",
+      "tier": "core",
+      "summary": "Which side carries the explicit signal: a flag for the batch, a flag for ad hoc, an environment variable, or a separate subcommand.",
+      "whyMaterial": "It changes the CLI contract that finance users share with each other, and it only has stable options once the freshness scope is settled.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "snapshot-consistency",
+      "tier": "depth",
+      "summary": "Whether one export represents a single consistent point in time, or may mix rows read at different moments.",
+      "whyMaterial": "The sync job rewrites the source roughly every fifteen minutes, so without a stated snapshot rule an export can silently straddle two versions of the data.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "concurrent-change",
+      "tier": "depth",
+      "summary": "What an in-progress export does when the source file is rewritten underneath it.",
+      "whyMaterial": "Finishing from the initial read, restarting, and merging late rows all produce different CSVs from the same command.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "change-detection",
+      "tier": "depth",
+      "summary": "How a stale cache entry is recognized: modification time and size, a content hash, or not caching the fresh path at all.",
+      "whyMaterial": "Timestamp checks are cheap but miss same-size rewrites that preserve mtime; hashing is exact but costs a full read on every one of the nightly batch's four hundred calls.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "failure-output",
+      "tier": "depth",
+      "summary": "What the CLI emits when it cannot obtain data it considers valid: a non-zero exit with no CSV, the last readable rows plus a warning, or an empty CSV.",
+      "whyMaterial": "A downstream Sheets import cannot tell a warning on stderr from success, so returning partial rows silently corrupts the very report this change exists to fix.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "retry-policy",
+      "tier": "depth",
+      "summary": "Whether a read that races the sync job is retried, and what bounds that retry.",
+      "whyMaterial": "An unbounded retry can hang a nightly call inside a ten minute budget; no retry at all turns an ordinary sync overlap into a failed export.",
+      "settledBy": "persona",
+      "weight": 0.5
+    }
+  ],
+  "forbiddenQuestions": [
+    {
+      "id": "column-order",
+      "summary": "Asking whether the CSV column order may change.",
+      "provedBy": "AGENTS.md, README.md known consumers, and test/exporter.test.js all pin it."
+    },
+    {
+      "id": "dependencies",
+      "summary": "Asking whether a caching or date library may be added.",
+      "provedBy": "AGENTS.md bans dependencies."
+    },
+    {
+      "id": "test-command",
+      "summary": "Asking how to run the tests.",
+      "provedBy": "package.json scripts.test and AGENTS.md both state node --test."
+    },
+    {
+      "id": "cache-existence",
+      "summary": "Asking whether caching exists or where results are stored.",
+      "provedBy": "src/cache.js and src/exporter.js show the disk cache and its TTL."
+    },
+    {
+      "id": "sync-frequency",
+      "summary": "Asking how often the upstream sync job rewrites the source.",
+      "provedBy": "README.md and src/store.js both state roughly every fifteen minutes."
+    }
+  ],
+  "expectedEvidenceAnchors": [
+    "src/cache.js",
+    "src/exporter.js",
+    "src/store.js",
+    "README.md",
+    "AGENTS.md",
+    "test/exporter.test.js"
+  ],
+  "acceptance": {
+    "mustPreserve": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieve": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  }
+}

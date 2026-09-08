@@ -1,0 +1,9 @@
+{
+  "id": "bulk-rename",
+  "language": "en",
+  "workspace": "workspace",
+  "persona": "persona.md",
+  "rubric": "rubric.json",
+  "request": "renamer stops halfway through when a name already exists. Fix this.",
+  "notes": "Deliberately vague, and deliberately unlike stale-exports: the core decisions are about the safety of a destructive operation rather than a policy or performance tradeoff. The repository already answers recursion, pattern syntax, the undo decision, the stream convention, the test command, and the dependency ban."
+}

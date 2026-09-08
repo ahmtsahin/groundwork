@@ -1,0 +1,9 @@
+{
+  "id": "stale-exports",
+  "language": "en",
+  "workspace": "workspace",
+  "persona": "persona.md",
+  "rubric": "rubric.json",
+  "request": "Exports in reportkit sometimes show stale data. Fix this.",
+  "notes": "Deliberately vague. The repository already proves the cache exists, states the nightly 10 minute budget, pins the CSV column order, and bans new dependencies. A good session discovers those instead of asking about them."
+}

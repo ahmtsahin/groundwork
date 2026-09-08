@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "evidence-backed-root-decision",
+      "request": "$settle",
+      "repositoryFacts": [
+        {
+          "source": "project memory, 2026-08-04",
+          "statement": "The reversal-threshold decision remains explicitly deferred after measurement."
+        },
+        {
+          "source": "analysis_outputs/threshold_lab/",
+          "statement": "Institutional-flow survivors are contemporaneous at lead 0-1 while price controls dominate longer leads."
+        },
+        {
+          "source": "README.md",
+          "statement": "Free data adds no predictive power and current reversal thresholds were selected in-sample."
+        }
+      ],
+      "decisions": [
+        {
+          "id": "root-premise",
+          "dependsOn": []
+        },
+        {
+          "id": "threshold-policy",
+          "dependsOn": [
+            "root-premise"
+          ]
+        },
+        {
+          "id": "price-zone-pivot",
+          "dependsOn": [
+            "root-premise"
+          ]
+        },
+        {
+          "id": "live-panel-design",
+          "dependsOn": [
+            "root-premise"
+          ]
+        }
+      ],
+      "expected": {
+        "entryMode": "root-decision",
+        "firstRoundTargets": [
+          "root-premise"
+        ],
+        "contextRequires": [
+          "verified-facts",
+          "source-anchors",
+          "labelled-inference-or-open-tension",
+          "blocked-downstream-decisions"
+        ],
+        "deferred": [
+          "threshold-policy",
+          "price-zone-pivot",
+          "live-panel-design"
+        ],
+        "forbiddenQuestionTargets": [
+          "repository-layer-menu",
+          "document-language"
+        ]
+      }
+    },
+    {
+      "id": "honest-orientation-fallback",
+      "request": "$settle",
+      "repositoryFacts": [
+        {
+          "source": "README.md",
+          "statement": "The repository exposes two independent user-facing workflows."
+        },
+        {
+          "source": "tests/",
+          "statement": "Both workflows have passing coverage and no recorded open product decision."
+        }
+      ],
+      "decisions": [],
+      "expected": {
+        "entryMode": "orientation-fallback",
+        "firstRoundTargets": [
+          "observable-outcome-fork"
+        ],
+        "contextRequires": [
+          "verified-facts",
+          "source-anchors",
+          "honest-no-root-conclusion"
+        ],
+        "deferred": [],
+        "forbiddenQuestionTargets": [
+          "repository-layer-menu"
+        ]
+      }
+    },
+    {
+      "id": "dependent-document-language",
+      "request": "Grill this idea before coding.",
+      "repositoryFacts": [
+        {
+          "source": "repository documentation",
+          "statement": "Project decision records use English."
+        },
+        {
+          "source": "current request",
+          "statement": "The user has not yet chosen whether the session should produce a written artifact."
+        }
+      ],
+      "decisions": [
+        {
+          "id": "session-artifact",
+          "dependsOn": []
+        },
+        {
+          "id": "document-language",
+          "dependsOn": [
+            "session-artifact"
+          ]
+        }
+      ],
+      "expected": {
+        "entryMode": "root-decision",
+        "firstRoundTargets": [
+          "session-artifact"
+        ],
+        "contextRequires": [
+          "verified-facts",
+          "dependency-note"
+        ],
+        "deferred": [
+          "document-language"
+        ],
+        "forbiddenQuestionTargets": []
+      }
+    },
+    {
+      "id": "independent-product-axes",
+      "request": "$settle",
+      "repositoryFacts": [
+        {
+          "source": "priority_scanner_gui.py",
+          "statement": "The main workflow combines data download, signal calculation, backtesting, tables, and charts."
+        },
+        {
+          "source": "backtest_signals.py",
+          "statement": "The backtest reuses the GUI signal logic while separate output packages exercise different indicator sets."
+        },
+        {
+          "source": "README and test inventory",
+          "statement": "Packaging and automated-test coverage remain limited, so target audience changes the delivery boundary independently of signal strategy."
+        }
+      ],
+      "decisions": [
+        {
+          "id": "next-iteration-success",
+          "dependsOn": []
+        },
+        {
+          "id": "strategy-composition",
+          "dependsOn": []
+        },
+        {
+          "id": "target-user",
+          "dependsOn": []
+        },
+        {
+          "id": "packaging-scope",
+          "dependsOn": [
+            "target-user"
+          ]
+        }
+      ],
+      "expected": {
+        "entryMode": "frontier",
+        "firstRoundTargets": [
+          "next-iteration-success",
+          "strategy-composition",
+          "target-user"
+        ],
+        "contextRequires": [
+          "verified-facts",
+          "source-anchors",
+          "labelled-inference-or-open-tension",
+          "dependency-map",
+          "counterfactual-dependency-audit"
+        ],
+        "deferred": [
+          "packaging-scope"
+        ],
+        "forbiddenQuestionTargets": [
+          "single-question-intake",
+          "release-priority-bundle"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "groundwork",
+  "description": "Turn a rough repository idea into a decision-complete implementation: read the code first, then work the decision tree in rounds until nothing material is left assumed, and only then implement and verify.",
+  "version": "0.4.0",
+  "author": {
+    "name": "Ahmet Sahin"
+  },
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "brainstorming",
+    "coding",
+    "decisions"
+  ]
+}

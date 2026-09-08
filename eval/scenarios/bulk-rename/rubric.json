@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "scenario": "bulk-rename",
+  "expectedPath": "bounded",
+  "note": "Core decisions are the ones a competent session cannot avoid noticing. Depth decisions are the ones only a thorough interrogation reaches; they are where the tool either becomes safe or merely stops erroring.",
+  "materialDecisions": [
+    {
+      "id": "collision-policy",
+      "tier": "core",
+      "summary": "What happens when a target name already exists: refuse the whole run, skip that file, overwrite it, or pick a different name.",
+      "whyMaterial": "It is the difference between a failed run and a lost photo, and the user's answer forbids two of the obvious options.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "atomicity",
+      "tier": "core",
+      "summary": "Whether a run that cannot complete leaves nothing changed, or applies what it can.",
+      "whyMaterial": "The reported complaint is a half-renamed directory; a fix that only improves the error message does not address it.",
+      "settledBy": "persona",
+      "repositoryHint": "README.md describes the partial-application behavior and src/rename.js shows renameSync applied in a loop."
+    },
+    {
+      "id": "self-inclusion",
+      "tier": "core",
+      "summary": "Whether files that already match the target naming scheme are included in the rename set.",
+      "whyMaterial": "With the current plan an existing photo-001.jpg is both a rename source and a collision target, which is how the reported failure is produced.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "transient-collision",
+      "tier": "depth",
+      "summary": "How to handle a target that is occupied now but will itself be renamed later in the same run.",
+      "whyMaterial": "Refusing every occupied target rejects runs that are actually valid; allowing them without ordering or staging corrupts data. The plan in src/rename.js has no ordering at all.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "idempotency",
+      "tier": "depth",
+      "summary": "What a second identical run does.",
+      "whyMaterial": "README.md states people frequently run it twice by mistake, and renumbering on the second pass silently reorders a library.",
+      "settledBy": "persona",
+      "repositoryHint": "README.md records the double-run habit."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "tier": "depth",
+      "summary": "Whether a rename that differs only in letter case counts as a clash or a no-op on a case-insensitive filesystem.",
+      "whyMaterial": "On Windows and macOS the existence check and the rename disagree, so a naive clash test either blocks valid renames or silently overwrites.",
+      "settledBy": "persona"
+    },
+    {
+      "id": "failure-reporting",
+      "tier": "depth",
+      "summary": "What a refused run reports, on which stream, and with what exit code.",
+      "whyMaterial": "The user's stated need after a failure is knowing exactly what did not change; a bare non-zero exit does not provide it.",
+      "settledBy": "persona",
+      "repositoryHint": "AGENTS.md fixes the stdout and stderr convention, so only the content and exit code are open."
+    },
+    {
+      "id": "preview-mode",
+      "tier": "depth",
+      "summary": "Whether a preview or confirmation step is part of the fix, and whether safety may depend on the operator reading it.",
+      "whyMaterial": "A preview is the tempting answer and the user explicitly refuses it as the whole fix, so a session that stops there has solved the wrong problem.",
+      "settledBy": "persona",
+      "weight": 0.5
+    }
+  ],
+  "forbiddenQuestions": [
+    {
+      "id": "recursion",
+      "summary": "Asking whether subdirectories should be included.",
+      "provedBy": "src/match.js states it is deliberately not recursive and reads a single directory."
+    },
+    {
+      "id": "pattern-syntax",
+      "summary": "Asking which glob or pattern syntax to support.",
+      "provedBy": "src/match.js states that * is the only supported wildcard."
+    },
+    {
+      "id": "undo-feature",
+      "summary": "Asking whether to add undo or a rename journal.",
+      "provedBy": "README.md records the 1.1 decision against it and marks it out of scope."
+    },
+    {
+      "id": "stream-convention",
+      "summary": "Asking whether output belongs on stdout or stderr.",
+      "provedBy": "AGENTS.md fixes user-facing output to stdout and diagnostics to stderr."
+    },
+    {
+      "id": "dependencies",
+      "summary": "Asking whether a glob or filesystem helper library may be added.",
+      "provedBy": "AGENTS.md bans dependencies, naming glob libraries."
+    },
+    {
+      "id": "test-command",
+      "summary": "Asking how to run the tests.",
+      "provedBy": "package.json scripts.test and AGENTS.md both state node --test."
+    }
+  ],
+  "expectedEvidenceAnchors": [
+    "src/rename.js",
+    "src/match.js",
+    "src/cli.js",
+    "README.md",
+    "AGENTS.md",
+    "test/rename.test.js"
+  ],
+  "acceptance": {
+    "mustPreserve": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieve": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  }
+}

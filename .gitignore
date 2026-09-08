@@ -1,0 +1,23 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+coverage/
+__pycache__/
+*.pyc
+
+# Local credentials, permissions, and temporary release checks.
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.release-work/
+
+# Evaluation runs and cached instructions are local, reproducible artifacts.
+eval/.arms/
+eval/results/
+
+# Historical research notes stay local; public guides live directly in docs/.
+docs/20??-??-??-*.md

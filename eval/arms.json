@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "defaultModel": "gpt-5.6-sol",
+  "claude": {
+    "defaultModel": "opus",
+    "maxBudgetUsd": 25
+  },
+  "wrapper": "The following skill is active for this task. Follow it exactly.\n\n=== SKILL ===",
+  "arms": [
+    {
+      "id": "clarify-then-code",
+      "label": "settle (native)",
+      "channel": "native",
+      "enableFeatures": [
+        "default_mode_request_user_input"
+      ],
+      "sources": [
+        {
+          "kind": "repo",
+          "path": "codex/plugins/groundwork/skills/settle/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "clarify-then-code-text",
+      "label": "settle (text)",
+      "channel": "text",
+      "sources": [
+        {
+          "kind": "derived",
+          "base": "plugins/groundwork/skills/settle/SKILL.md",
+          "section": "## Native question tool",
+          "replacement": "eval/hosts/text/native-question-tool.md"
+        }
+      ]
+    },
+    {
+      "id": "no-skill",
+      "label": "no skill (Codex only)",
+      "channel": "text",
+      "sources": []
+    },
+    {
+      "id": "clarify-then-code-compact",
+      "label": "settle (compact)",
+      "channel": "native",
+      "enableFeatures": [
+        "default_mode_request_user_input"
+      ],
+      "sources": [
+        {
+          "kind": "repo",
+          "path": "eval/variants/compact/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "clarify-then-code-interrogate",
+      "label": "settle (interrogate)",
+      "channel": "native",
+      "enableFeatures": [
+        "default_mode_request_user_input"
+      ],
+      "sources": [
+        {
+          "kind": "repo",
+          "path": "eval/variants/interrogate/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "settle-claude",
+      "label": "settle (Claude Code, native)",
+      "host": "claude",
+      "channel": "native",
+      "sources": [
+        {
+          "kind": "repo",
+          "path": "plugins/groundwork/skills/settle/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "no-skill-claude",
+      "label": "no skill (Claude Code)",
+      "host": "claude",
+      "channel": "text",
+      "sources": []
+    }
+  ]
+}
