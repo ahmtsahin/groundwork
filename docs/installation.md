@@ -104,7 +104,8 @@ npx skills add ahmtsahin/groundwork
 Select the agents you use when asked. Codex still needs the
 `default_mode_request_user_input` feature and invokes `$settle`; Claude Code
 invokes `/settle` instead of `/groundwork:settle`. Add `--global` to install
-for every project instead of the current one.
+for every project instead of the current one. Use one installation method per
+host; a plugin and a CLI copy side by side show up as two skills.
 
 ## Verify the installation
 

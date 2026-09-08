@@ -84,7 +84,8 @@ npx skills add ahmtsahin/groundwork
 
 Select the agents you use when asked. Codex still needs the feature flag above
 and invokes `$settle`; Claude Code invokes `/settle` instead of
-`/groundwork:settle`.
+`/groundwork:settle`. Use one installation method per host; a plugin and a
+CLI copy side by side show up as two skills.
 
 [Updates, uninstall, and troubleshooting](docs/installation.md)
 
@@ -166,10 +167,10 @@ npm test
 ```
 
 The skill lives in `plugin/skills/settle/SKILL.md`, and both hosts load the
-`plugin/` folder as the plugin; there is no build step. Tests check that the manifests agree
-and that the skill names a host's question tool only in its native question
-section. See [CONTRIBUTING.md](CONTRIBUTING.md) for package checks and the
-[evaluation guide](eval/README.md) for optional behavioral runs.
+`plugin/` folder as the plugin; there is no build step. Tests check that the
+manifests agree and that the skill names a host's question tool only in its
+native question section. See [CONTRIBUTING.md](CONTRIBUTING.md) for package
+checks and the [evaluation guide](eval/README.md) for optional behavioral runs.
 
 ## License
 
