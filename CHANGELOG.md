@@ -7,6 +7,8 @@ before 0.4.0 were private iterations and are not listed.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-08
+
 ### Changed
 
 - One skill file at `plugin/skills/settle/SKILL.md` now serves both hosts;
@@ -38,5 +40,6 @@ First public release.
   judge, plus text and no-skill baselines for both hosts.
 - README walkthrough built from real Codex screenshots.
 
-[Unreleased]: https://github.com/ahmtsahin/groundwork/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ahmtsahin/groundwork/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ahmtsahin/groundwork/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ahmtsahin/groundwork/releases/tag/v0.4.0

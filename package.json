@@ -1,6 +1,6 @@
 {
   "name": "groundwork",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Groundwork: a Claude Code and Codex plugin whose settle skill closes every material decision through host-native question rounds before implementing.",
   "private": true,
   "type": "module",

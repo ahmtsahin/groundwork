@@ -1,5 +1,11 @@
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import readline from "node:readline";
+
+// The eval client reports the repository version so app-server logs match releases.
+const { version: packageVersion } = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8")
+);
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
@@ -204,7 +210,7 @@ export async function startAppServer({
       clientInfo: {
         name: "groundwork-eval",
         title: "Groundwork Eval",
-        version: "0.4.0"
+        version: packageVersion
       },
       capabilities: { experimentalApi: true }
     });
