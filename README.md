@@ -1,5 +1,9 @@
 # Groundwork
 
+[![Validate](https://github.com/ahmtsahin/groundwork/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmtsahin/groundwork/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/ahmtsahin/groundwork)](LICENSE)
+[![skills.sh](https://skills.sh/b/ahmtsahin/groundwork)](https://skills.sh/ahmtsahin/groundwork)
+
 **Read the code. Settle the decisions. Build with a clear brief.**
 
 Groundwork is a plugin for **Codex and Claude Code**. Its `settle` skill turns
@@ -19,7 +23,7 @@ The walkthrough ends at the final scope check.
 [Read the usage guide](docs/usage.md).*
 
 [Install](#install) · [Usage](#usage) · [How it works](#how-it-works) ·
-[Contributing](CONTRIBUTING.md)
+[Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 ## Install
 

@@ -76,6 +76,12 @@ Run the local checks, review the generated package, and confirm the install
 and update commands against the supported host CLIs. CI checks both Linux
 and Windows and rejects changes that leave generated Codex files out of date.
 
+Record the release in `CHANGELOG.md`: move the entries under `Unreleased` to a
+new version heading with the date, and add the comparison link at the bottom.
+Then tag the release commit as `vX.Y.Z`, push the tag, and publish a GitHub
+Release from it with the changelog entry as its notes. Plugin directories and
+the release feed read tags, not the version fields in the manifests.
+
 Use English for repository documentation and examples. Keep the public
 README focused on installation and actual usage.
 
