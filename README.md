@@ -12,11 +12,11 @@ option or write your own answer in the built-in form. Follow-up questions and
 the final scope check use that same interface, keeping the conversation in
 your current task.
 
-![Illustrated Groundwork walkthrough: inspect the repository, answer a native question, confirm the scope, and review the verified result.](docs/assets/native-questions.gif)
+![Groundwork in Codex: inspect a workshop booking app, answer native questions, and review the resolved waitlist scope.](docs/assets/groundwork-seatwise-demo.gif)
 
-*Illustrated example, not a recording of either app. Controls depend on your
-host. [View the still image](docs/assets/native-questions.png) or
-[read the walkthrough](docs/usage.md#example-fix-stale-exports).*
+*Real screenshots from a Codex session, cropped and edited for readability.
+The walkthrough ends at the final scope check.
+[Read the usage guide](docs/usage.md).*
 
 [Install](#install) · [Usage](#usage) · [How it works](#how-it-works) ·
 [Contributing](CONTRIBUTING.md)

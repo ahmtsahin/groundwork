@@ -1,4 +1,4 @@
-"""Render the illustrative README walkthrough. Requires Python 3 and Pillow."""
+"""Render the illustrative export walkthrough. Requires Python 3 and Pillow."""
 
 import argparse
 from pathlib import Path
