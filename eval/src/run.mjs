@@ -27,7 +27,7 @@ import {
   snapshotWorkspace
 } from "./workspace.mjs";
 
-function listScenarios() {
+export function listScenarios() {
   const root = path.join(EVAL_ROOT, "scenarios");
 
   return readdirSync(root, { withFileTypes: true })
@@ -37,7 +37,7 @@ function listScenarios() {
     .sort();
 }
 
-function loadScenario(id) {
+export function loadScenario(id) {
   const directory = path.join(EVAL_ROOT, "scenarios", id);
   const scenario = JSON.parse(readFileSync(path.join(directory, "scenario.json"), "utf8"));
 

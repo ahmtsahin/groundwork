@@ -41,6 +41,30 @@
       "sources": []
     },
     {
+      "id": "grilling",
+      "label": "grilling (mattpocock)",
+      "channel": "text",
+      "version": "mattpocock/skills d81f3a1 (main, 2026-09-29); skill file last changed 85f83d3 (2026-08-20)",
+      "sources": [
+        {
+          "kind": "remote",
+          "url": "https://raw.githubusercontent.com/mattpocock/skills/d81f3a183412e71a5b1e84ca21bc1a35eea03a60/skills/productivity/grilling/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "superpowers-brainstorming",
+      "label": "brainstorming (obra/superpowers)",
+      "channel": "text",
+      "version": "obra/superpowers v6.4.2 (8ca22db, 2026-09-25); skill file last changed in v6.4.1",
+      "sources": [
+        {
+          "kind": "remote",
+          "url": "https://raw.githubusercontent.com/obra/superpowers/8ca22dba9a94f28898bbce59f2537ff4d87c747d/skills/brainstorming/SKILL.md"
+        }
+      ]
+    },
+    {
       "id": "settle-compact",
       "label": "settle (compact)",
       "channel": "native",

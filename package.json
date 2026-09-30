@@ -16,6 +16,8 @@
     "native:probe": "node scripts/native-live-probe.mjs",
     "eval:doctor": "node eval/src/run.mjs doctor",
     "eval": "node eval/src/run.mjs run",
+    "eval:compare": "node eval/src/compare.mjs",
+    "eval:summary": "node eval/src/summarize.mjs",
     "validate": "npm run check && npm test && npm run smoke"
   },
   "devDependencies": {
