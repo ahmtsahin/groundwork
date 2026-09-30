@@ -1,18 +1,10 @@
 import { spawn } from "node:child_process";
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from "node:fs";
-import os from "node:os";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { startAppServer } from "./app-server-client.mjs";
-import { resolveCodexCli } from "./codex-cli.mjs";
+import { execUsageIsCumulative, resolveCodexCli } from "./codex-cli.mjs";
+import { createIsolatedCodexHome } from "./codex-home.mjs";
 import {
   answerNativeQuestions,
   answerTextTurn,
@@ -46,7 +38,11 @@ function findUsage(value, found) {
     found = {
       input_tokens: Number(value.input_tokens ?? value.inputTokens ?? 0),
       output_tokens: Number(value.output_tokens ?? value.outputTokens ?? 0),
-      total_tokens: Number(value.total_tokens ?? value.totalTokens ?? 0)
+      total_tokens: Number(value.total_tokens ?? value.totalTokens ?? 0),
+      cached_input_tokens: Number(value.cached_input_tokens ?? value.cachedInputTokens ?? 0),
+      reasoning_output_tokens: Number(
+        value.reasoning_output_tokens ?? value.reasoningOutputTokens ?? 0
+      )
     };
   }
 
@@ -179,6 +175,12 @@ function summarizeExecTurn(result) {
   return { threadId, usage, errors };
 }
 
+/**
+ * A text arm is one `codex exec` per turn: the first carries the instructions
+ * and the task, each later one resumes the thread with the simulated user's
+ * reply. The whole run shares one temporary Codex home, so resumed turns find
+ * their thread and installed skills stay out, as they do on the native path.
+ */
 async function runTextArm({
   arm,
   scenario,
@@ -195,10 +197,13 @@ async function runTextArm({
   if (!cli) throw new Error("No Codex CLI found.");
 
   const startedAt = Date.now();
+  const isolatedHome = createIsolatedCodexHome();
+  const cumulative = execUsageIsCumulative(cli.version);
   const turns = [];
   const userReplies = [];
   let threadId;
   let aborted = null;
+  let previousReport = null;
 
   const baseArgs = [
     "--json",
@@ -222,97 +227,111 @@ async function runTextArm({
     baseArgs.push("--enable", feature);
   }
 
-  for (let index = 0; index < maxTurns; index += 1) {
-    const outputPath = path.join(logDir, `turn-${index}-last-message.txt`);
-    writeFileSync(outputPath, "", "utf8");
+  try {
+    for (let index = 0; index < maxTurns; index += 1) {
+      const outputPath = path.join(logDir, `turn-${index}-last-message.txt`);
+      writeFileSync(outputPath, "", "utf8");
 
-    const isFirst = index === 0;
-    const prompt = isFirst
-      ? initialPrompt(arm.instructions, scenario.request)
-      : userReplies[userReplies.length - 1];
-    const args = isFirst
-      ? [
-          "exec",
-          ...baseArgs,
-          "-C",
-          workspace,
-          "--output-last-message",
-          outputPath,
-          "-"
-        ]
-      : [
-          "exec",
-          "resume",
-          threadId,
-          ...baseArgs,
-          "--output-last-message",
-          outputPath,
-          "-"
-        ];
+      const isFirst = index === 0;
+      const prompt = isFirst
+        ? initialPrompt(arm.instructions, scenario.request)
+        : userReplies[userReplies.length - 1];
+      const args = isFirst
+        ? [
+            "exec",
+            ...baseArgs,
+            "-C",
+            workspace,
+            "--output-last-message",
+            outputPath,
+            "-"
+          ]
+        : [
+            "exec",
+            "resume",
+            threadId,
+            ...baseArgs,
+            "--output-last-message",
+            outputPath,
+            "-"
+          ];
 
-    const turnStartedAt = Date.now();
-    const result = await runCodexExec(cli.binary, args, {
-      cwd: workspace,
-      env: process.env,
-      timeoutMs: turnTimeoutMs,
-      stdin: prompt
-    });
+      const turnStartedAt = Date.now();
+      const result = await runCodexExec(cli.binary, args, {
+        cwd: workspace,
+        env: { ...process.env, CODEX_HOME: isolatedHome },
+        timeoutMs: turnTimeoutMs,
+        stdin: prompt
+      });
 
-    writeFileSync(
-      path.join(logDir, `turn-${index}-events.jsonl`),
-      result.events.map((event) => JSON.stringify(event)).join("\n"),
-      "utf8"
-    );
-
-    if (result.stderr.trim()) {
       writeFileSync(
-        path.join(logDir, `turn-${index}-stderr.txt`),
-        result.stderr,
+        path.join(logDir, `turn-${index}-events.jsonl`),
+        result.events.map((event) => JSON.stringify(event)).join("\n"),
         "utf8"
       );
+
+      if (result.stderr.trim()) {
+        writeFileSync(
+          path.join(logDir, `turn-${index}-stderr.txt`),
+          result.stderr,
+          "utf8"
+        );
+      }
+
+      const summary = summarizeExecTurn(result);
+      threadId ??= summary.threadId;
+      const finalMessage = existsSync(outputPath)
+        ? readFileSync(outputPath, "utf8").trim()
+        : "";
+
+      // A cumulative report covers the thread so far; the turn is what it
+      // added since the previous report.
+      const reported = summary.usage ?? null;
+      const usage =
+        cumulative && reported && previousReport
+          ? subtractUsage(reported, previousReport)
+          : reported;
+      previousReport = reported ?? previousReport;
+
+      turns.push({
+        index,
+        kind: isFirst ? "initial" : "resume",
+        ms: Date.now() - turnStartedAt,
+        exitCode: result.code,
+        timedOut: result.timedOut,
+        usage,
+        reportedUsage: reported,
+        errors: summary.errors,
+        eventCount: result.events.length,
+        finalMessage
+      });
+
+      if (result.timedOut) {
+        aborted = `turn ${index} timed out`;
+        break;
+      }
+      if (summary.errors.length > 0) {
+        aborted = summary.errors[0];
+        break;
+      }
+      if (!finalMessage) {
+        aborted = `turn ${index} produced no final message`;
+        break;
+      }
+
+      const verdict = await answerTextTurn(
+        persona,
+        finalMessage,
+        userReplies,
+        simulatorOptions
+      );
+      turns[turns.length - 1].textQuestionCount = verdict.questionCount;
+
+      if (verdict.done || !verdict.reply.trim()) break;
+      userReplies.push(verdict.reply.trim());
     }
-
-    const summary = summarizeExecTurn(result);
-    threadId ??= summary.threadId;
-    const finalMessage = existsSync(outputPath)
-      ? readFileSync(outputPath, "utf8").trim()
-      : "";
-
-    turns.push({
-      index,
-      kind: isFirst ? "initial" : "resume",
-      ms: Date.now() - turnStartedAt,
-      exitCode: result.code,
-      timedOut: result.timedOut,
-      usage: summary.usage ?? null,
-      errors: summary.errors,
-      eventCount: result.events.length,
-      finalMessage
-    });
-
-    if (result.timedOut) {
-      aborted = `turn ${index} timed out`;
-      break;
-    }
-    if (summary.errors.length > 0) {
-      aborted = summary.errors[0];
-      break;
-    }
-    if (!finalMessage) {
-      aborted = `turn ${index} produced no final message`;
-      break;
-    }
-
-    const verdict = await answerTextTurn(
-      persona,
-      finalMessage,
-      userReplies,
-      simulatorOptions
-    );
-    turns[turns.length - 1].textQuestionCount = verdict.questionCount;
-
-    if (verdict.done || !verdict.reply.trim()) break;
-    userReplies.push(verdict.reply.trim());
+  } finally {
+    rmSync(isolatedHome, { recursive: true, force: true });
   }
 
   return {
@@ -324,25 +343,11 @@ async function runTextArm({
     startedAt: new Date(startedAt).toISOString(),
     wallClockMs: Date.now() - startedAt,
     aborted,
+    usageReporting: cumulative ? "cumulative" : "per-turn",
     turns,
     userReplies,
     nativeRounds: []
   };
-}
-
-function createIsolatedCodexHome() {
-  const sourceHome = process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
-  const authSource = path.join(sourceHome, "auth.json");
-
-  if (!existsSync(authSource)) {
-    throw new Error(
-      `Cannot isolate the native eval: ${authSource} is missing. Sign in with Codex first.`
-    );
-  }
-
-  const isolatedHome = mkdtempSync(path.join(os.tmpdir(), "groundwork-native-home-"));
-  copyFileSync(authSource, path.join(isolatedHome, "auth.json"));
-  return isolatedHome;
 }
 
 function finalAgentMessage(messages) {

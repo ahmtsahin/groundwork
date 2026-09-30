@@ -99,6 +99,17 @@ function compareVersions(a, b) {
 }
 
 /**
+ * From 0.158, `codex exec resume` reports the thread's running total in
+ * `turn.completed`; earlier builds reported the resumed turn alone. Text arms
+ * run every chat reply as a resumed exec, so this decides whether a turn's
+ * usage is read directly or as the difference between two reports.
+ */
+export function execUsageIsCumulative(version) {
+  const [major, minor] = version.parts;
+  return major > 0 || minor >= 158;
+}
+
+/**
  * A codex.exe whose companion binaries have been cleaned up (as happens to the
  * old directory while an update lands) starts fine but fails closed on the very
  * first tool call. Prefer an install that still has them.

@@ -1,9 +1,10 @@
 import { runStructured } from "./codex-json.mjs";
 
 /**
- * Plays the user. Runs in its own Codex process with `--ignore-user-config` so
- * none of the operator's configuration or skills leak into the simulated
- * user's context: the simulator must never itself run the skill under test.
+ * Plays the user. Runs in its own Codex process with `--ignore-user-config` and
+ * a temporary Codex home, so none of the operator's configuration, skills, or
+ * plugins leak into the simulated user's context: the simulator must never
+ * itself run the skill under test.
  */
 
 const NATIVE_INPUT_SCHEMA = {

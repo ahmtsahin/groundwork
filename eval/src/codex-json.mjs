@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { resolveCodexCli } from "./codex-cli.mjs";
+import { sharedIsolatedCodexHome } from "./codex-home.mjs";
 
 /**
  * The prompt travels over stdin, never argv: a simulator prompt carries the whole
@@ -14,6 +15,7 @@ import { resolveCodexCli } from "./codex-cli.mjs";
 function runDetached(binary, args, timeoutMs, stdin) {
   return new Promise((resolve) => {
     const child = spawn(binary, args, {
+      env: { ...process.env, CODEX_HOME: sharedIsolatedCodexHome() },
       windowsHide: true,
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -50,9 +52,11 @@ function runDetached(binary, args, timeoutMs, stdin) {
 /**
  * Runs one structured, tool-free Codex turn and returns the parsed JSON result.
  *
- * Always uses `--ignore-user-config` and an empty read-only workspace so the
- * operator's own configuration and skills cannot leak into a simulated user or
- * a judge. Nothing under evaluation may run inside these calls.
+ * Always uses `--ignore-user-config`, a temporary Codex home holding only the
+ * sign-in file, and an empty read-only workspace, so neither the operator's
+ * configuration nor the skills and plugins installed in the real home can leak
+ * into a simulated user or a judge. Nothing under evaluation may run inside
+ * these calls.
  */
 export async function runStructured(prompt, schema, options = {}) {
   const cli = resolveCodexCli();
