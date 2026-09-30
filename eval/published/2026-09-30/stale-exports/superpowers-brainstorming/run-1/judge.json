@@ -1,0 +1,87 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question asked whether every export should immediately detect source rewrites, and the user distinguished fresh ad hoc exports from cache-tolerant nightly exports."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The first question explicitly proposed detecting a newly rewritten orders.json immediately, and the user required ad hoc detection not to miss a rewrite."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first question included continued cache reuse, and the user answered that the nightly batch may keep cached data to remain within its window."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The agent asked how to distinguish nightly execution and offered --nightly, an environment variable, or an existing external signal."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "No question or repository-based conclusion established whether an export must represent one consistent point in time."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The session never settled what an export should do if orders.json is rewritten during its read."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The first question proposed rewrite detection and cache invalidation, and the user directed the agent to bypass cache on the ad hoc path if detection could miss a rewrite."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "The session never addressed the CLI output and exit behavior when valid data cannot be obtained."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "The session never addressed retries or retry bounds for reads racing the sync job."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 3,
+    "approvalGates": 1,
+    "withSingleAxis": 1,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 2,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "change-detection"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session correctly settled and implemented the core split between fresh ad hoc exports and cached nightly exports, including an explicit --nightly interface. It was shallow relative to the request for thorough interrogation: snapshot consistency, concurrent rewrites, failure output, and retry behavior were never settled, and the final design confirmation was an approval gate rather than an additional decision.",
+  "rubricMaterialCount": 9
+}

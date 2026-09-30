@@ -1,0 +1,500 @@
+ADDED src/args.js
+export const USAGE = "usage: reportkit [--fresh] <from> <to>";
+
+export function parseArgs(args) {
+  const freshFlags = args.filter((argument) => argument === "--fresh");
+  const unknownFlags = args.filter(
+    (argument) => argument.startsWith("-") && argument !== "--fresh"
+  );
+  const dates = args.filter((argument) => !argument.startsWith("-"));
+
+  if (freshFlags.length > 1 || unknownFlags.length > 0 || dates.length !== 2) {
+    throw new Error(USAGE);
+  }
+
+  return { from: dates[0], to: dates[1], fresh: freshFlags.length === 1 };
+}
+
+
+ADDED src/command.js
+import { parseArgs } from "./args.js";
+import { exportOrders, toCsv } from "./exporter.js";
+
+export function run(args, { stdout = process.stdout, stderr = process.stderr } = {}) {
+  try {
+    const { from, to, fresh } = parseArgs(args);
+    const csv = toCsv(exportOrders(from, to, { fresh }));
+    stdout.write(csv);
+    return 0;
+  } catch (error) {
+    stderr.write(`${error.message}\n`);
+    return 1;
+  }
+}
+
+
+ADDED test/args.test.js
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { parseArgs, USAGE } from "../src/args.js";
+
+test("parseArgs accepts --fresh anywhere", () => {
+  assert.deepEqual(parseArgs(["--fresh", "2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    fresh: true
+  });
+  assert.deepEqual(parseArgs(["2026-01-01", "--fresh", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    fresh: true
+  });
+  assert.deepEqual(parseArgs(["2026-01-01", "2026-01-31", "--fresh"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    fresh: true
+  });
+});
+
+test("parseArgs preserves the unflagged invocation", () => {
+  assert.deepEqual(parseArgs(["2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    fresh: false
+  });
+});
+
+for (const args of [
+  [],
+  ["2026-01-01"],
+  ["2026-01-01", "2026-01-31", "extra"],
+  ["--unknown", "2026-01-01", "2026-01-31"],
+  ["--fresh", "--fresh", "2026-01-01", "2026-01-31"]
+]) {
+  test(`parseArgs rejects ${JSON.stringify(args)}`, () => {
+    assert.throws(() => parseArgs(args), { message: USAGE });
+  });
+}
+
+
+ADDED test/freshness.test.js
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { run } from "../src/command.js";
+import { exportOrders } from "../src/exporter.js";
+import { loadStableOrdersSnapshot } from "../src/store.js";
+
+function workspaceWith(orders) {
+  const workspace = mkdtempSync(path.join(tmpdir(), "reportkit-test-"));
+  mkdirSync(path.join(workspace, "data"));
+  writeFileSync(path.join(workspace, "data", "orders.json"), JSON.stringify(orders));
+  return workspace;
+}
+
+function inWorkspace(workspace, callback) {
+  const original = process.cwd();
+  process.chdir(workspace);
+  try {
+    return callback();
+  } finally {
+    process.chdir(original);
+  }
+}
+
+test("fresh mode invalidates stale TTL cache after the source changes", () => {
+  const workspace = workspaceWith([
+    { id: "old", placedAt: "2026-01-02", total: 10, status: "paid" }
+  ]);
+  const range = ["2026-01-01", "2026-01-31"];
+
+  const initial = inWorkspace(workspace, () => exportOrders(...range));
+  assert.equal(initial[0].id, "old");
+
+  writeFileSync(
+    path.join(workspace, "data", "orders.json"),
+    JSON.stringify([
+      { id: "new", placedAt: "2026-01-02", total: 20, status: "paid" }
+    ])
+  );
+
+  const nightly = inWorkspace(workspace, () => exportOrders(...range));
+  assert.equal(nightly[0].id, "old");
+
+  const fresh = inWorkspace(workspace, () => exportOrders(...range, { fresh: true }));
+  assert.equal(fresh[0].id, "new");
+
+  const payload = JSON.parse(
+    readFileSync(path.join(workspace, ".reportkit-cache", `orders-${range[0]}-${range[1]}.json`))
+  );
+  assert.match(payload.sourceFingerprint, /^[a-f0-9]{64}$/);
+});
+
+test("fresh mode treats a legacy cache entry without a fingerprint as a miss", () => {
+  const workspace = workspaceWith([
+    { id: "current", placedAt: "2026-01-02", total: 10, status: "paid" }
+  ]);
+  const cacheDirectory = path.join(workspace, ".reportkit-cache");
+  mkdirSync(cacheDirectory);
+  writeFileSync(
+    path.join(cacheDirectory, "orders-2026-01-01-2026-01-31.json"),
+    JSON.stringify({ writtenAt: Date.now(), rows: [{ id: "legacy" }] })
+  );
+
+  const result = inWorkspace(workspace, () =>
+    exportOrders("2026-01-01", "2026-01-31", { fresh: true })
+  );
+  assert.equal(result[0].id, "current");
+});
+
+test("stable snapshot retries twice and fingerprints the bytes it parses", () => {
+  const changing = Buffer.from('[{"id":"changing"}]');
+  const stable = Buffer.from('[{"id":"stable"}]');
+  const reads = [changing, stable, changing, stable, stable, stable];
+  let index = 0;
+
+  const snapshot = loadStableOrdersSnapshot(3, () => reads[index++]);
+
+  assert.equal(index, 6);
+  assert.deepEqual(snapshot.orders, [{ id: "stable" }]);
+  assert.match(snapshot.fingerprint, /^[a-f0-9]{64}$/);
+});
+
+test("stable snapshot fails after three unstable attempts", () => {
+  let read = 0;
+  assert.throws(
+    () => loadStableOrdersSnapshot(3, () => Buffer.from(String(read++))),
+    /could not read a stable orders source after 3 attempts/
+  );
+  assert.equal(read, 6);
+});
+
+test("CLI argument and source failures emit no CSV", () => {
+  const workspace = workspaceWith([]);
+  const output = [];
+  const errors = [];
+  const io = {
+    stdout: { write: (value) => output.push(value) },
+    stderr: { write: (value) => errors.push(value) }
+  };
+  const invalidArgs = inWorkspace(workspace, () =>
+    run(["--unknown", "2026-01-01", "2026-01-31"], io)
+  );
+  assert.equal(invalidArgs, 1);
+  assert.deepEqual(output, []);
+  assert.match(errors.join(""), /usage:/);
+
+  writeFileSync(path.join(workspace, "data", "orders.json"), "not JSON");
+  errors.length = 0;
+  const invalidSource = inWorkspace(workspace, () =>
+    run(["--fresh", "2026-01-01", "2026-01-31"], io)
+  );
+  assert.equal(invalidSource, 1);
+  assert.deepEqual(output, []);
+  assert.match(errors.join(""), /could not read a stable orders source/);
+});
+
+
+MODIFIED README.md
+--- before ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Not decided
+
+Whether ad hoc runs should see fresher data than the nightly batch does.
+
+--- after ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- `reportkit --fresh <from> <to>` validates the cache against a stable snapshot
+  of `data/orders.json`; `--fresh` may appear anywhere in the argument list.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Cache policy
+
+- Unflagged nightly-compatible runs use the six-hour TTL cache.
+- Ad hoc runs should use `--fresh`; cached rows are reused only when their
+  SHA-256 fingerprint matches the current stable source snapshot.
+
+
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function readCacheForFingerprint(key, sourceFingerprint) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (payload.sourceFingerprint !== sourceFingerprint) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows, sourceFingerprint) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  const file = cachePath(key);
+  const temporaryFile = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  const payload = { writtenAt: Date.now(), rows };
+  if (sourceFingerprint !== undefined) payload.sourceFingerprint = sourceFingerprint;
+
+  try {
+    writeFileSync(temporaryFile, JSON.stringify(payload), "utf8");
+    renameSync(temporaryFile, file);
+  } finally {
+    rmSync(temporaryFile, { force: true });
+  }
+}
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { run } from "./command.js";
+
+process.exitCode = run(process.argv.slice(2));
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, readCacheForFingerprint, writeCache } from "./cache.js";
+import { loadStableOrdersSnapshot, ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+function rowsForRange(orders, from, to) {
+  return orders
+    .filter((order) => order.placedAt >= from && order.placedAt <= to)
+    .map((order) => ({
+      id: order.id,
+      placedAt: order.placedAt,
+      total: order.total,
+      status: order.status
+    }));
+}
+
+export function exportOrders(from, to, { fresh = false } = {}) {
+  const key = cacheKey(from, to);
+
+  if (fresh) {
+    const snapshot = loadStableOrdersSnapshot();
+    const cached = readCacheForFingerprint(key, snapshot.fingerprint);
+    if (cached) return cached;
+
+    const rows = rowsForRange(snapshot.orders, from, to);
+    writeCache(key, rows, snapshot.fingerprint);
+    return rows;
+  }
+
+  const cached = readCache(key);
+  if (cached) return cached;
+
+  const rows = rowsForRange(ordersForRange(from, to), from, to);
+
+  writeCache(key, rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+
+export const STABLE_READ_ATTEMPTS = 3;
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function loadStableOrdersSnapshot(
+  attempts = STABLE_READ_ATTEMPTS,
+  readSource = () => readFileSync("data/orders.json")
+) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const first = readSource();
+      const second = readSource();
+
+      if (!first.equals(second)) {
+        lastError = new Error(`orders source changed during read (attempt ${attempt})`);
+        continue;
+      }
+
+      return {
+        orders: JSON.parse(second.toString("utf8")),
+        fingerprint: createHash("sha256").update(second).digest("hex")
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    `could not read a stable orders source after ${attempts} attempts: ${lastError?.message}`,
+    { cause: lastError }
+  );
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}

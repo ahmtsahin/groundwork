@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 6,
+    "distinctApproaches": 6,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question asked whether normal exports should refresh after source changes, always bypass cache, or use a shorter TTL, and the user chose source-change invalidation with an ad hoc/nightly fallback condition."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The first freshness-policy question let the user choose among completed-source-change freshness, always-current reads, and a shorter fixed TTL, and the user required a signal that cannot miss changes."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first question explicitly presented the nightly ten-minute runtime risk, and the user required that caching remain for the nightly batch if exact invalidation was unavailable."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "missed",
+      "justification": "The user was never asked to choose among a batch flag, ad hoc flag, environment variable, or separate subcommand, and the implementation silently used one transparent behavior for both modes."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "The agent asked whether an export should restart on a newer source or finish from its starting snapshot, and the user answered, “Finish from the starting snapshot. Do not restart or mix versions.”"
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The “Concurrent valid rewrite” question directly asked what an in-progress export should do if the source changes, and the user selected finishing the initial snapshot."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "user_volunteered",
+      "justification": "In free text the user required a source-version signal that “cannot miss a change,” after which the agent derived SHA-256 content identity rather than directly asking the rubric’s mtime/hash/no-cache choice."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The agent asked whether an unavailable or malformed source should fail without cached rows or return stale rows, and the user chose, “Fail loudly and emit no file.”"
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The agent separately asked for retry count and spacing, and the user chose two retries after the initial attempt with 250 ms between attempts."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 14,
+    "approvalGates": 1,
+    "withSingleAxis": 12,
+    "recommendationAccepted": 10,
+    "withConcreteOptions": 13,
+    "withRecommendation": 13,
+    "withRepositoryEvidence": 8
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly settled freshness, consistency, failure, retry, and exact content-detection behavior, and the implementation visibly honored those decisions while preserving the required compatibility constraints. It over-expanded a bounded stale-cache fix into a new upstream manifest protocol and never directly settled the CLI interface-shape decision; the final confirmation was also an approval gate rather than a substantive decision.",
+  "rubricMaterialCount": 9
+}

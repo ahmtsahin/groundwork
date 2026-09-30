@@ -1,0 +1,87 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 773226,
+    "tokens": {
+      "input": 1294065,
+      "output": 35200,
+      "total": 1329265
+    }
+  },
+  "interaction": {
+    "agentTurns": 12,
+    "userMessages": 11,
+    "nativeRounds": 0,
+    "humanInputs": 11,
+    "questionsAsked": 23,
+    "approvalGates": 2,
+    "decisionQuestions": 21
+  },
+  "questionQuality": {
+    "withConcreteOptions": 21,
+    "withRecommendation": 21,
+    "withRepositoryEvidence": 9,
+    "withSingleAxis": 19,
+    "recommendationAccepted": 19,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.429,
+    "axisPurityRate": 0.905,
+    "recommendationAccuracy": 0.905
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "case-insensitive-fs"
+    ],
+    "closureRate": 0.875,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 7,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session was unusually thorough and visibly implemented nearly every settled behavior, including atomic publication, collision rejection, no-op reruns, and the stream contract. It over-interrogated the user and delayed the whole-approach choice until after many detail questions; it also never surfaced the case-insensitive-filesystem decision, instead encoding an assumption in the implementation."
+}

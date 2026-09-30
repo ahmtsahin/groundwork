@@ -1,0 +1,87 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The agent asked which freshness policy to use, and the user chose “Ad hoc fresh, nightly cached.”"
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The selected option specified that normal CLI runs bypass the six-hour cache, which the agent restated as always reflecting the current orders.json."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The options explicitly contrasted preserving cached nightly operation with risking the ten-minute limit, and the user chose nightly caching."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The chosen option explicitly proposed an opt-in cache option for the nightly script, later concretized as --cache and approved by the user."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "The agent never asked whether an export must represent one consistent point in time or may mix source versions."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The transcript never settles what an in-progress export should do if orders.json is rewritten during its read."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The selected approach explicitly avoids cache validation on the fresh path by bypassing the cache entirely."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "The agent never asked or established what the CLI should emit when valid source data cannot be obtained."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "No question or implementation detail addresses retries when a read races the sync job."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 2,
+    "approvalGates": 1,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "change-detection"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session selected and implemented a clear bounded approach that preserves nightly caching while making ad hoc exports fresh, and it avoided all forbidden questions. However, the questioning was shallow: after one bundled approach question it moved to an approval gate without covering snapshot consistency, concurrent rewrites, failure output, or retry bounds.",
+  "rubricMaterialCount": 9
+}

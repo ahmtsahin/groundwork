@@ -1,0 +1,352 @@
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  unlinkSync
+} from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+const SNAPSHOT_FILE = "source-snapshot.json";
+
+function snapshotPath() {
+  return path.join(CACHE_DIR, SNAPSHOT_FILE);
+}
+
+function atomicWriteJson(file, value) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
+
+  try {
+    writeFileSync(temporary, JSON.stringify(value), "utf8");
+    renameSync(temporary, file);
+  } catch (error) {
+    try {
+      unlinkSync(temporary);
+    } catch {
+      // A missing temporary file needs no cleanup.
+    }
+    throw error;
+  }
+}
+
+function readSnapshot() {
+  const payload = JSON.parse(readFileSync(snapshotPath(), "utf8"));
+  if (
+    typeof payload.generation !== "string" ||
+    typeof payload.sourceBase64 !== "string"
+  ) {
+    throw new Error("untrusted cache snapshot");
+  }
+  return payload;
+}
+
+function snapshotMatches(snapshot, source) {
+  const cachedSource = Buffer.from(snapshot.sourceBase64, "base64");
+  return cachedSource.equals(source);
+}
+
+export function readSnapshotCache(key, source) {
+  try {
+    const snapshot = readSnapshot();
+    if (!snapshotMatches(snapshot, source)) return null;
+
+    const payload = JSON.parse(readFileSync(cachePath(key), "utf8"));
+    if (payload.generation !== snapshot.generation || !Array.isArray(payload.rows)) {
+      return null;
+    }
+    return payload.rows;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSnapshotCache(key, source, rows) {
+  let snapshot;
+
+  try {
+    const existing = readSnapshot();
+    if (snapshotMatches(existing, source)) snapshot = existing;
+  } catch {
+    // Missing and untrusted snapshots are replaced below.
+  }
+
+  if (!snapshot) {
+    snapshot = {
+      generation: randomUUID(),
+      sourceBase64: source.toString("base64")
+    };
+    atomicWriteJson(snapshotPath(), snapshot);
+  }
+
+  atomicWriteJson(cachePath(key), { generation: snapshot.generation, rows });
+}
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readSnapshotCache, writeSnapshotCache } from "./cache.js";
+import { loadOrdersSnapshot } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const snapshot = loadOrdersSnapshot();
+  const key = cacheKey(from, to);
+  const cached = readSnapshotCache(key, snapshot.source);
+  if (cached) return cached;
+
+  const rows = snapshot.orders
+    .filter((order) => order.placedAt >= from && order.placedAt <= to)
+    .map((order) => ({
+      id: order.id,
+      placedAt: order.placedAt,
+      total: order.total,
+      status: order.status
+    }));
+
+  try {
+    writeSnapshotCache(key, snapshot.source, rows);
+  } catch {
+    // Cache persistence is optional; the fresh rows are still authoritative.
+  }
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function loadOrdersSnapshot(readFile = readFileSync) {
+  const first = readFile("data/orders.json");
+  const firstOrders = JSON.parse(first.toString("utf8"));
+  const second = readFile("data/orders.json");
+  JSON.parse(second.toString("utf8"));
+
+  if (!first.equals(second)) {
+    throw new Error("orders changed while the export snapshot was being acquired");
+  }
+
+  return { source: first, orders: firstOrders };
+}
+
+export function ordersForRange(from, to) {
+  return loadOrdersSnapshot().orders.filter(
+    (order) => order.placedAt >= from && order.placedAt <= to
+  );
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { exportOrders, toCsv } from "../src/exporter.js";
+import { writeCache } from "../src/cache.js";
+import { loadOrdersSnapshot } from "../src/store.js";
+
+function inTemporaryProject(run) {
+  const previous = process.cwd();
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-"));
+  mkdirSync(path.join(directory, "data"));
+  process.chdir(directory);
+
+  try {
+    return run(directory);
+  } finally {
+    process.chdir(previous);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function writeOrders(orders) {
+  writeFileSync("data/orders.json", JSON.stringify(orders), "utf8");
+}
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("export invalidates cached rows when any source byte changes", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeOrders([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].total, 10);
+
+    writeOrders([{ id: "a1", placedAt: "2026-01-02", total: 20, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].total, 20);
+  });
+});
+
+test("export ignores legacy cache entries that cannot prove their snapshot", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeOrders([{ id: "fresh", placedAt: "2026-01-02", total: 20, status: "paid" }]);
+    writeCache("orders-2026-01-01-2026-01-31", [
+      { id: "stale", placedAt: "2026-01-02", total: 10, status: "paid" }
+    ]);
+
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "fresh");
+  });
+});
+
+test("snapshot acquisition rejects two different valid reads", () => {
+  const versions = [
+    Buffer.from('[{"id":"first"}]'),
+    Buffer.from('[{"id":"second"}]')
+  ];
+
+  assert.throws(
+    () => loadOrdersSnapshot(() => versions.shift()),
+    /changed while the export snapshot was being acquired/
+  );
+});
+
+test("snapshot acquisition rejects either malformed read", () => {
+  assert.throws(() => loadOrdersSnapshot(() => Buffer.from("not json")), SyntaxError);
+
+  const versions = [Buffer.from("[]"), Buffer.from("not json")];
+  assert.throws(() => loadOrdersSnapshot(() => versions.shift()), SyntaxError);
+});
+
+test("a cache write failure does not suppress correct fresh rows", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeOrders([{ id: "fresh", placedAt: "2026-01-02", total: 20, status: "paid" }]);
+    writeFileSync(".reportkit-cache", "not a directory", "utf8");
+
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "fresh");
+  });
+});

@@ -1,0 +1,358 @@
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+try {
+  const plan = planRenames(directory, pattern, replacement);
+
+  for (const step of plan) {
+    process.stdout.write(`${step.from} -> ${step.to}\n`);
+  }
+
+  applyRenames(directory, plan);
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { readdirSync, renameSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan, options = {}) {
+  const rename = options?.rename ?? renameSync;
+  const entries = readdirSync(directory, { withFileTypes: true });
+  const existing = new Map(entries.map((entry) => [entry.name.toLowerCase(), entry.name]));
+  const files = new Set(
+    entries.filter((entry) => entry.isFile()).map((entry) => entry.name)
+  );
+  const steps = plan.filter((step) => step.from !== step.to);
+  const sourceKeys = new Set(steps.map((step) => step.from.toLowerCase()));
+  const clashes = [];
+  const targets = new Map();
+
+  for (const step of steps) {
+    const sourceKey = step.from.toLowerCase();
+    const targetKey = step.to.toLowerCase();
+    const actualSource = existing.get(sourceKey);
+
+    if (!actualSource || actualSource !== step.from || !files.has(step.from)) {
+      clashes.push(`${step.from} is not an exact existing source name`);
+    }
+    if (sourceKey === targetKey) {
+      clashes.push(`${step.from} -> ${step.to} is a case-only clash`);
+    }
+
+    const targetSources = targets.get(targetKey) ?? [];
+    targetSources.push(step.from);
+    targets.set(targetKey, targetSources);
+
+    const occupant = existing.get(targetKey);
+    if (occupant && !sourceKeys.has(targetKey)) {
+      clashes.push(`${step.from} -> ${step.to} clashes with existing ${occupant}`);
+    }
+  }
+
+  for (const [targetKey, sources] of targets) {
+    if (sources.length > 1) {
+      const target = steps.find((step) => step.to.toLowerCase() === targetKey).to;
+      clashes.push(`${sources.join(", ")} all target ${target}`);
+    }
+  }
+
+  if (clashes.length > 0) {
+    throw new Error(`Rename clashes:\n- ${clashes.join("\n- ")}`);
+  }
+  if (steps.length === 0) return;
+
+  const reserved = new Set(existing.keys());
+  const transaction = randomUUID();
+  const states = steps.map((step, index) => {
+    let temp;
+    do {
+      temp = `.renamer-${transaction}-${index}-${randomUUID()}.tmp`;
+    } while (reserved.has(temp.toLowerCase()));
+    reserved.add(temp.toLowerCase());
+    return { ...step, temp, current: step.from };
+  });
+
+  try {
+    for (const state of states) {
+      rename(path.join(directory, state.from), path.join(directory, state.temp));
+      state.current = state.temp;
+    }
+    for (const state of states) {
+      rename(path.join(directory, state.temp), path.join(directory, state.to));
+      state.current = state.to;
+    }
+  } catch (cause) {
+    const rollbackFailures = [];
+
+    for (const state of [...states].reverse()) {
+      if (state.current !== state.to) continue;
+      try {
+        rename(path.join(directory, state.to), path.join(directory, state.temp));
+        state.current = state.temp;
+      } catch (error) {
+        rollbackFailures.push(`${state.current} (originally ${state.from}): ${error.message}`);
+      }
+    }
+    for (const state of [...states].reverse()) {
+      if (state.current !== state.temp) continue;
+      try {
+        rename(path.join(directory, state.temp), path.join(directory, state.from));
+        state.current = state.from;
+      } catch (error) {
+        rollbackFailures.push(`${state.current} (originally ${state.from}): ${error.message}`);
+      }
+    }
+
+    if (rollbackFailures.length > 0) {
+      const attention = states
+        .filter((state) => state.current !== state.from)
+        .map((state) => `${state.current} (should be ${state.from})`);
+      throw new Error(
+        `Rename failed: ${cause.message}. Rollback also failed:\n- ${rollbackFailures.join("\n- ")}\n` +
+        `Files that may need attention:\n- ${attention.join("\n- ")}`,
+        { cause }
+      );
+    }
+
+    throw new Error(`Rename failed: ${cause.message}. All original names were restored.`, { cause });
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { existsSync, mkdirSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { mkdtempSync, rmSync } from "node:fs";
+
+import { applyRenames, planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+function sandbox(t, names) {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-test-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  for (const name of names) {
+    const file = path.join(directory, name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, name);
+  }
+  return directory;
+}
+
+function names(directory) {
+  return readdirSync(directory).sort();
+}
+
+test("lists all existing and duplicate target clashes without renaming", (t) => {
+  const directory = sandbox(t, ["a.jpg", "b.jpg", "PHOTO-001.jpg"]);
+  const plan = [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-001.jpg" }
+  ];
+
+  assert.throws(
+    () => applyRenames(directory, plan),
+    (error) => {
+      assert.match(error.message, /clashes/i);
+      assert.match(error.message, /photo-001\.jpg/);
+      assert.match(error.message, /PHOTO-001\.jpg/);
+      assert.match(error.message, /a\.jpg/);
+      assert.match(error.message, /b\.jpg/);
+      return true;
+    }
+  );
+  assert.deepEqual(names(directory), ["PHOTO-001.jpg", "a.jpg", "b.jpg"]);
+});
+
+test("treats a case-only rename as a clash", (t) => {
+  const directory = sandbox(t, ["photo.jpg"]);
+  assert.throws(
+    () => applyRenames(directory, [{ from: "photo.jpg", to: "PHOTO.jpg" }]),
+    /case-only clash/i
+  );
+  assert.deepEqual(names(directory), ["photo.jpg"]);
+});
+
+test("treats an existing directory as an occupied target", (t) => {
+  const directory = sandbox(t, ["a.jpg"]);
+  mkdirSync(path.join(directory, "taken.jpg"));
+
+  assert.throws(
+    () => applyRenames(directory, [{ from: "a.jpg", to: "taken.jpg" }]),
+    /clashes with existing taken\.jpg/i
+  );
+  assert.deepEqual(names(directory), ["a.jpg", "taken.jpg"]);
+});
+
+test("an identical second plan is a no-op", (t) => {
+  const directory = sandbox(t, ["a.jpg", "b.jpg"]);
+  const first = planRenames(directory, "*.jpg", "photo-#.jpg");
+  applyRenames(directory, first);
+  const afterFirst = names(directory);
+
+  const second = planRenames(directory, "*.jpg", "photo-#.jpg");
+  let renameCalls = 0;
+  applyRenames(directory, second, {
+    rename(from, to) {
+      renameCalls += 1;
+      renameSync(from, to);
+    }
+  });
+
+  assert.deepEqual(names(directory), afterFirst);
+  assert.equal(renameCalls, 0);
+});
+
+test("restores original names when a staged move fails", (t) => {
+  const directory = sandbox(t, ["a.jpg", "b.jpg"]);
+  let calls = 0;
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "one.jpg" },
+      { from: "b.jpg", to: "two.jpg" }
+    ], {
+      rename(from, to) {
+        calls += 1;
+        if (calls === 2) throw new Error("injected move failure");
+        renameSync(from, to);
+      }
+    }),
+    /injected move failure/
+  );
+  assert.deepEqual(names(directory), ["a.jpg", "b.jpg"]);
+});
+
+test("restores original names when a final move fails", (t) => {
+  const directory = sandbox(t, ["a.jpg", "b.jpg"]);
+  let calls = 0;
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "one.jpg" },
+      { from: "b.jpg", to: "two.jpg" }
+    ], {
+      rename(from, to) {
+        calls += 1;
+        if (calls === 4) throw new Error("injected final failure");
+        renameSync(from, to);
+      }
+    }),
+    /injected final failure/
+  );
+  assert.deepEqual(names(directory), ["a.jpg", "b.jpg"]);
+});
+
+test("reports files needing attention when rollback fails", (t) => {
+  const directory = sandbox(t, ["a.jpg", "b.jpg"]);
+  let calls = 0;
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "one.jpg" },
+      { from: "b.jpg", to: "two.jpg" }
+    ], {
+      rename(from, to) {
+        calls += 1;
+        if (calls === 2) throw new Error("move failed");
+        if (calls === 3) throw new Error("rollback failed");
+        renameSync(from, to);
+      }
+    }),
+    (error) => {
+      assert.match(error.message, /rollback also failed/i);
+      assert.match(error.message, /a\.jpg/);
+      assert.match(error.message, /may need attention/i);
+      return true;
+    }
+  );
+  assert.equal(existsSync(path.join(directory, "a.jpg")), false);
+});

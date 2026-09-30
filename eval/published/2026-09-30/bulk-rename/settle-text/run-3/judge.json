@@ -1,0 +1,81 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The first question offered reject-all, skip, or choose-unused-name policies, and the user selected “Reject the entire plan before renaming anything, and report every collision.”"
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The user selected both preflight rejection before any rename and best-effort reverse rollback after an unexpected application failure."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The session never asked whether files already matching the generated naming scheme should be excluded from the input set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The planned-source-overlap question explicitly asked whether an occupied destination may be used when its occupant is scheduled to move, and the user chose to treat it as a collision."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The planned-source-overlap option explicitly identified accidental reruns and the user chose the policy that rejects them."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question, repository resolution, or volunteered answer addressed case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The user was asked about collision-report completeness, rejected-run output streams, and runtime/rollback error reporting, choosing complete stderr diagnostics and failure."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "asked",
+      "justification": "The agent asked whether rejected plans should print proposed rename lines, and the user chose empty stdout rather than relying on proposed-plan output."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 8,
+    "approvalGates": 1,
+    "withSingleAxis": 7,
+    "recommendationAccepted": 7,
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 7
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session clearly declared a bounded path, used repository-specific evidence, avoided forbidden questions, and implemented the user’s selected collision, locking, rollback, and reporting behavior. It missed the explicit self-inclusion and case-insensitive-filesystem decisions, and best-effort rollback plus validation/application races do not strictly guarantee either acceptance requirement.",
+  "rubricMaterialCount": 8
+}

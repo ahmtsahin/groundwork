@@ -1,0 +1,637 @@
+ADDED docs/decisions/2026-09-30-transactional-renames.md
+# Transactional renames
+
+## Request as understood
+
+Fix bulk rename runs that stop halfway when a target name already exists. A run must reject all collisions before changing files and must leave the original names recoverable if any later filesystem operation fails or the process is interrupted.
+
+## Path and approach
+
+This began as a bounded correction to the existing rename flow. It moved to the architectural path when the required guarantee expanded to all filesystem failures. The structural marker was durable transaction state and crash recovery, revisiting the README's prior exclusion of a rename journal.
+
+The chosen approach stages every source through reserved temporary names and stores a durable transaction record in the affected directory. Ordinary failures roll back immediately. A later invocation recovers an interrupted transaction before permitting new work.
+
+## Questions and answers
+
+1. Collision outcome: reject the whole batch before renaming anything and report every collision.
+2. Occupied matched source: treat every occupied target as a collision.
+3. No-partial-change guarantee: guarantee all-or-nothing behavior for every filesystem failure, with durable recovery where immediate restoration cannot finish.
+4. Concurrent runs: refuse overlapping runs in the same directory.
+5. Transaction approach: use staged renames with a durable transaction record; crash leftovers are acceptable only until the next run automatically recovers them, and no new batch may start while recovery is pending.
+6. Transaction-record location: use a reserved file inside the renamed directory.
+7. Recovery conflict: refuse recovery and report every mismatch.
+8. Successful-rename output: print rename lines only after commit.
+9. After successful recovery: exit without starting the requested batch.
+10. Invalid transaction record: refuse all work and report the record problem.
+11. Record cleanup failure after commit: keep the committed batch, warn clearly that renames committed but cleanup remains pending, and retry cleanup later.
+12. Recovery-only exit status: use retry status 2.
+13. Committed record found later: clean it and continue with the requested batch.
+14. Contract confirmation: confirmed as written and authorized for implementation.
+
+## Probe ledger
+
+1. Scope exclusions: undo remains excluded by `README.md`; recursive traversal remains excluded by `src/match.js` — repository: `README.md` “Out of scope” and the non-recursive `readdirSync` implementation in `src/match.js`.
+2. Empty input: an empty match produces an empty plan, no output, and a successful no-op — repository: `planRenames` and the empty-plan return in `applyRenames`, covered by the existing planning behavior in `test/rename.test.js`.
+3. Duplicate input: multiple sources targeting one destination reject the entire plan before transaction creation — user: questions 1 and 3 chose rejection of every collision and an all-or-nothing run.
+4. Concurrent input: a second renamer targeting the directory refuses to run while the first transaction owner is live — user: question 4 chose refusal of overlapping runs.
+5. Partial input: an application or commit failure triggers restoration; unfinished restoration retains durable state — user: questions 3 and 5 chose all-or-nothing behavior with durable staged recovery.
+6. Repeated input: an accidental rerun either fails collision preflight, performs distinct interrupted recovery, or cleans committed metadata before continuing — user: questions 1, 5, 9, and 13 chose those outcomes.
+7. Failed input: missing or unreadable directories fail before transaction creation; occupied or duplicate targets fail preflight; a missing, duplicated, or unexpected original/temporary/target path during recovery blocks all changes; malformed or unreadable records block all work — user: questions 1, 3, 7, and 10 chose preflight rejection and refusal of unsafe recovery.
+8. State location: transaction state lives in `.renamer-transaction.json` inside the affected directory — user: question 6 chose in-directory state.
+9. State lifetime: applying state lasts through commit or complete restoration; committed state lasts only until cleanup succeeds — user: questions 5, 9, 11, and 13 chose durable recovery, distinct recovery, and deferred cleanup.
+10. State migration: there was no prior transaction state; records carry version 1 and unknown versions are invalid — cannot arise: the feature has no earlier on-disk schema, as shown by the pre-change repository and version 1 record validation in `src/rename.js`.
+11. Shape readers: only this tool reads the private transaction record; scripts consume CLI stdout and exit status — repository: `package.json` exposes only `src/cli.js`, and `README.md` documents script use.
+12. Compatibility: stdout retains `from -> to` lines but moves them after commit; recovery adds exit status 2 — user: questions 8 and 12 explicitly chose those interface changes.
+13. Authorization: the process may rename only direct file matches in the supplied directory under the caller's filesystem permissions — repository: `src/match.js` filters `Dirent.isFile()` entries from one directory and Node filesystem calls retain OS permission checks.
+14. Validation: source and target names must be single path components; all targets, duplicate destinations, transaction versions, fields, and recovery path states are checked before relevant movement — user: questions 1, 3, 7, and 10 require collision rejection and refusal of untrustworthy recovery state.
+15. Recording: the record contains version, status, owner PID, original names, target names, and unique temporary names — user: question 5 chose a durable staged transaction record.
+16. Failure presentation: diagnostics go to stderr; ordinary failures exit 1, completed recovery exits 2, and committed-cleanup failure warns that renames succeeded — user: questions 7, 10, 11, and 12 chose explicit refusal, warning, and retry status; stderr is required by `AGENTS.md`.
+17. Failure residue: no transaction artifact remains after successful commit or rollback; interrupted/failed recovery retains the applying record and temporary paths; cleanup failure retains a committed record — user: questions 5, 7, and 11 chose automatic recovery, conflict preservation, and deferred cleanup.
+18. Seam placement: extend the existing planner/applicator and CLI rather than opening a new public service or recursive interface — repository: `src/cli.js`, `src/rename.js`, and the private package manifest define the existing seam.
+
+## Resolved contract
+
+- Preflight the complete plan, report every occupied or duplicated target, and rename nothing on collision.
+- Store reserved transaction state in the affected directory and exclude that state and temporary paths from matching.
+- Refuse a concurrent live run. Stage sources through unique temporary names, then install targets.
+- Roll back ordinary failures before returning. Preserve transaction state when restoration cannot finish or execution is interrupted.
+- On the next invocation, restore a valid interrupted transaction and exit 2 without starting the requested batch.
+- Refuse malformed, unreadable, or conflicting recovery state without moving files.
+- Print rename lines only after commit. If committed-record cleanup fails, warn that renames committed and cleanup remains pending; the next invocation cleans it and proceeds.
+- Keep undo, recursion, target replacement, and collision skipping out of scope.
+
+## Verification
+
+`node test/rename.test.js` passed 11 assertions covering collision aggregation and unchanged files, duplicate targets, complete commit, injected application rollback, interrupted recovery, live-run refusal, malformed and conflicting recovery refusal, and committed cleanup retry. A direct CLI collision check exited 1, wrote the collision diagnostic, produced no success lines, and left every file unchanged. The repository's `npm test` command could not create Node's isolated test worker in the evaluation sandbox (`spawn EPERM`); running the same `node:test` file directly completed successfully.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { applyRenames, planRenames, prepareDirectory } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+try {
+  const preparation = prepareDirectory(directory);
+  if (preparation.recovered) {
+    console.error("recovered an interrupted rename; requested batch was not started (run again to retry)");
+    process.exitCode = 2;
+  } else {
+    const plan = planRenames(directory, pattern, replacement);
+    const result = applyRenames(directory, plan);
+
+    for (const step of plan) {
+      process.stdout.write(`${step.from} -> ${step.to}\n`);
+    }
+
+    if (result.cleanupPending) {
+      console.error("renames committed, but transaction cleanup is still pending; the next run will clean it before continuing");
+    }
+  }
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/match.js
+--- before ---
+// Deliberately not recursive: renamer operates on one directory at a time.
+// The `*` wildcard is the only pattern syntax we support.
+import { readdirSync } from "node:fs";
+
+const SPECIAL = /[.+?^${}()|[\]\\]/g;
+
+function escapeLiteral(part) {
+  return part.replace(SPECIAL, "\\$&");
+}
+
+export function matchFiles(directory, pattern) {
+  const expression = new RegExp(
+    `^${pattern.split("*").map(escapeLiteral).join(".*")}$`
+  );
+
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => expression.test(name))
+    .sort();
+}
+
+--- after ---
+// Deliberately not recursive: renamer operates on one directory at a time.
+// The `*` wildcard is the only pattern syntax we support.
+import { readdirSync } from "node:fs";
+
+const INTERNAL_NAMES = new Set([
+  ".renamer-transaction.json",
+  ".renamer-transaction.json.next"
+]);
+
+const SPECIAL = /[.+?^${}()|[\]\\]/g;
+
+function escapeLiteral(part) {
+  return part.replace(SPECIAL, "\\$&");
+}
+
+export function matchFiles(directory, pattern) {
+  const expression = new RegExp(
+    `^${pattern.split("*").map(escapeLiteral).join(".*")}$`
+  );
+
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => !INTERNAL_NAMES.has(name) && !name.startsWith(".renamer-txn-"))
+    .filter((name) => expression.test(name))
+    .sort();
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import * as fs from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+const RECORD_NAME = ".renamer-transaction.json";
+const RECORD_VERSION = 1;
+
+export class RenameError extends Error {
+  constructor(message, code = "ERENAME") {
+    super(message);
+    this.name = "RenameError";
+    this.code = code;
+  }
+}
+
+function exists(ops, file) {
+  try {
+    ops.lstatSync(file);
+    return true;
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function recordPath(directory) {
+  return path.join(directory, RECORD_NAME);
+}
+
+function writeRecord(directory, record, ops) {
+  const destination = recordPath(directory);
+  const next = `${destination}.next`;
+  const handle = ops.openSync(next, "w");
+  try {
+    ops.writeFileSync(handle, `${JSON.stringify(record)}\n`);
+    ops.fsyncSync(handle);
+  } finally {
+    ops.closeSync(handle);
+  }
+  ops.renameSync(next, destination);
+}
+
+function createRecord(directory, record, ops) {
+  const destination = recordPath(directory);
+  const handle = ops.openSync(destination, "wx");
+  try {
+    ops.writeFileSync(handle, `${JSON.stringify(record)}\n`);
+    ops.fsyncSync(handle);
+  } catch (error) {
+    try { ops.unlinkSync(destination); } catch {}
+    throw error;
+  } finally {
+    ops.closeSync(handle);
+  }
+}
+
+function readRecord(directory, ops) {
+  let value;
+  try {
+    value = JSON.parse(ops.readFileSync(recordPath(directory), "utf8"));
+  } catch (error) {
+    throw new RenameError(`cannot read ${RECORD_NAME}: ${error.message}`, "ERECOVERY");
+  }
+
+  const validStep = (step) => step && ["from", "to", "temp"].every(
+    (key) => typeof step[key] === "string" && step[key] && path.basename(step[key]) === step[key]
+  );
+  if (
+    value?.version !== RECORD_VERSION ||
+    !["applying", "committed"].includes(value.status) ||
+    !Number.isInteger(value.pid) ||
+    !Array.isArray(value.steps) ||
+    !value.steps.every(validStep)
+  ) {
+    throw new RenameError(`cannot read ${RECORD_NAME}: invalid transaction record`, "ERECOVERY");
+  }
+  return value;
+}
+
+function processIsAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
+
+function locations(directory, step, ops) {
+  return ["from", "temp", "to"].filter((key) => exists(ops, path.join(directory, step[key])));
+}
+
+function validateRecovery(directory, record, ops) {
+  const mismatches = [];
+  for (const step of record.steps) {
+    const found = locations(directory, step, ops);
+    if (found.length !== 1) {
+      mismatches.push(`${step.from}: expected one transaction path, found ${found.length ? found.join(", ") : "none"}`);
+    }
+  }
+  return mismatches;
+}
+
+function restore(directory, record, ops) {
+  const mismatches = validateRecovery(directory, record, ops);
+  if (mismatches.length) {
+    throw new RenameError(`recovery state conflicts:\n${mismatches.map((item) => `- ${item}`).join("\n")}`, "ERECOVERY");
+  }
+
+  for (const step of [...record.steps].reverse()) {
+    const found = locations(directory, step, ops)[0];
+    if (found !== "from") {
+      ops.renameSync(path.join(directory, step[found]), path.join(directory, step.from));
+    }
+  }
+}
+
+export function prepareDirectory(directory, { ops = fs } = {}) {
+  const destination = recordPath(directory);
+  if (!exists(ops, destination)) return { recovered: false, cleaned: false };
+
+  const record = readRecord(directory, ops);
+  if (record.status === "committed") {
+    ops.unlinkSync(destination);
+    return { recovered: false, cleaned: true };
+  }
+  if (processIsAlive(record.pid)) {
+    throw new RenameError("another renamer run is active in this directory", "EBUSY");
+  }
+
+  try {
+    restore(directory, record, ops);
+    ops.unlinkSync(destination);
+  } catch (error) {
+    throw new RenameError(`automatic recovery could not finish: ${error.message}`, "ERECOVERY");
+  }
+  return { recovered: true, cleaned: false };
+}
+
+function findCollisions(directory, plan, ops) {
+  const collisions = [];
+  const targets = new Map();
+  for (const step of plan) {
+    const target = path.join(directory, step.to);
+    if (exists(ops, target)) collisions.push(`${step.to} already exists`);
+    const prior = targets.get(step.to);
+    if (prior) collisions.push(`${step.to} is targeted by both ${prior} and ${step.from}`);
+    else targets.set(step.to, step.from);
+  }
+  return collisions;
+}
+
+function validatePlan(plan) {
+  for (const step of plan) {
+    for (const key of ["from", "to"]) {
+      if (typeof step?.[key] !== "string" || !step[key] || path.basename(step[key]) !== step[key]) {
+        throw new RenameError(`invalid ${key} name in rename plan`, "EINVAL");
+      }
+    }
+  }
+}
+
+export function applyRenames(directory, plan, { ops = fs, id = randomUUID() } = {}) {
+  if (plan.length === 0) return { committed: true, cleanupPending: false };
+
+  validatePlan(plan);
+  const collisions = findCollisions(directory, plan, ops);
+  if (collisions.length) {
+    throw new RenameError(`rename collisions:\n${collisions.map((item) => `- ${item}`).join("\n")}`, "EEXIST");
+  }
+
+  const record = {
+    version: RECORD_VERSION,
+    status: "applying",
+    pid: process.pid,
+    steps: plan.map((step, index) => ({
+      ...step,
+      temp: `.renamer-txn-${id}-${index}`
+    }))
+  };
+
+  try {
+    createRecord(directory, record, ops);
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      throw new RenameError("another renamer run or pending recovery exists in this directory", "EBUSY");
+    }
+    throw error;
+  }
+
+  try {
+    for (const step of record.steps) {
+      ops.renameSync(path.join(directory, step.from), path.join(directory, step.temp));
+    }
+    for (const step of record.steps) {
+      ops.renameSync(path.join(directory, step.temp), path.join(directory, step.to));
+    }
+  } catch (operationError) {
+    try {
+      restore(directory, record, ops);
+      ops.unlinkSync(recordPath(directory));
+    } catch (recoveryError) {
+      throw new RenameError(
+        `rename failed: ${operationError.message}\nautomatic rollback could not finish: ${recoveryError.message}`,
+        "ERECOVERY"
+      );
+    }
+    throw new RenameError(`rename failed; original names restored: ${operationError.message}`, operationError.code);
+  }
+
+  record.status = "committed";
+  try {
+    writeRecord(directory, record, ops);
+  } catch (operationError) {
+    record.status = "applying";
+    try {
+      restore(directory, record, ops);
+      ops.unlinkSync(recordPath(directory));
+    } catch (recoveryError) {
+      throw new RenameError(
+        `rename commit failed: ${operationError.message}\nautomatic rollback could not finish: ${recoveryError.message}`,
+        "ERECOVERY"
+      );
+    }
+    throw new RenameError(`rename commit failed; original names restored: ${operationError.message}`, operationError.code);
+  }
+
+  try {
+    ops.unlinkSync(recordPath(directory));
+    return { committed: true, cleanupPending: false };
+  } catch (error) {
+    return { committed: true, cleanupPending: true, cleanupError: error };
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { applyRenames, planRenames, prepareDirectory } from "../src/rename.js";
+
+function directoryWith(names) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "renamer-test-"));
+  for (const name of names) fs.writeFileSync(path.join(directory, name), name);
+  return directory;
+}
+
+function namesIn(directory) {
+  return fs.readdirSync(directory).sort();
+}
+
+function remove(directory) {
+  fs.rmSync(directory, { recursive: true, force: true });
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("reports every collision without changing any file", () => {
+  const directory = directoryWith(["a.jpg", "b.jpg", "photo-001.jpg", "photo-002.jpg"]);
+  try {
+    const plan = [
+      { from: "a.jpg", to: "photo-001.jpg" },
+      { from: "b.jpg", to: "photo-002.jpg" }
+    ];
+    assert.throws(
+      () => applyRenames(directory, plan),
+      (error) => error.code === "EEXIST" &&
+        error.message.includes("photo-001.jpg") && error.message.includes("photo-002.jpg")
+    );
+    assert.deepEqual(namesIn(directory), ["a.jpg", "b.jpg", "photo-001.jpg", "photo-002.jpg"]);
+  } finally {
+    remove(directory);
+  }
+});
+
+test("rejects duplicate destinations before changing files", () => {
+  const directory = directoryWith(["a.jpg", "b.jpg"]);
+  try {
+    assert.throws(() => applyRenames(directory, [
+      { from: "a.jpg", to: "same.jpg" },
+      { from: "b.jpg", to: "same.jpg" }
+    ]), /targeted by both/);
+    assert.deepEqual(namesIn(directory), ["a.jpg", "b.jpg"]);
+  } finally {
+    remove(directory);
+  }
+});
+
+test("commits a complete batch and removes transaction state", () => {
+  const directory = directoryWith(["a.jpg", "b.jpg"]);
+  try {
+    const result = applyRenames(directory, [
+      { from: "a.jpg", to: "one.jpg" },
+      { from: "b.jpg", to: "two.jpg" }
+    ], { id: "success" });
+    assert.deepEqual(result, { committed: true, cleanupPending: false });
+    assert.deepEqual(namesIn(directory), ["one.jpg", "two.jpg"]);
+  } finally {
+    remove(directory);
+  }
+});
+
+test("rolls back when a rename fails during application", () => {
+  const directory = directoryWith(["a.jpg", "b.jpg"]);
+  let moves = 0;
+  const ops = {
+    ...fs,
+    renameSync(from, to) {
+      if (path.basename(from).startsWith(".renamer-txn-") && ++moves === 2) {
+        const error = new Error("injected failure");
+        error.code = "EIO";
+        throw error;
+      }
+      return fs.renameSync(from, to);
+    }
+  };
+  try {
+    assert.throws(() => applyRenames(directory, [
+      { from: "a.jpg", to: "one.jpg" },
+      { from: "b.jpg", to: "two.jpg" }
+    ], { ops, id: "rollback" }), /original names restored/);
+    assert.deepEqual(namesIn(directory), ["a.jpg", "b.jpg"]);
+  } finally {
+    remove(directory);
+  }
+});
+
+test("recovers an interrupted transaction as a distinct operation", () => {
+  const directory = directoryWith(["b.jpg", ".renamer-txn-crash-0"]);
+  const record = {
+    version: 1,
+    status: "applying",
+    pid: 2147483647,
+    steps: [
+      { from: "a.jpg", to: "one.jpg", temp: ".renamer-txn-crash-0" },
+      { from: "b.jpg", to: "two.jpg", temp: ".renamer-txn-crash-1" }
+    ]
+  };
+  fs.writeFileSync(path.join(directory, ".renamer-transaction.json"), JSON.stringify(record));
+  try {
+    assert.deepEqual(prepareDirectory(directory), { recovered: true, cleaned: false });
+    assert.deepEqual(namesIn(directory), ["a.jpg", "b.jpg"]);
+  } finally {
+    remove(directory);
+  }
+});
+
+test("refuses live, malformed, and conflicting recovery records", async (t) => {
+  await t.test("live", () => {
+    const directory = directoryWith([]);
+    fs.writeFileSync(path.join(directory, ".renamer-transaction.json"), JSON.stringify({
+      version: 1, status: "applying", pid: process.pid, steps: []
+    }));
+    try { assert.throws(() => prepareDirectory(directory), { code: "EBUSY" }); }
+    finally { remove(directory); }
+  });
+
+  await t.test("malformed", () => {
+    const directory = directoryWith(["a.jpg"]);
+    fs.writeFileSync(path.join(directory, ".renamer-transaction.json"), "not json");
+    try {
+      assert.throws(() => prepareDirectory(directory), { code: "ERECOVERY" });
+      assert.deepEqual(namesIn(directory), [".renamer-transaction.json", "a.jpg"]);
+    } finally { remove(directory); }
+  });
+
+  await t.test("conflicting", () => {
+    const directory = directoryWith(["a.jpg", ".renamer-txn-crash-0"]);
+    fs.writeFileSync(path.join(directory, ".renamer-transaction.json"), JSON.stringify({
+      version: 1,
+      status: "applying",
+      pid: 2147483647,
+      steps: [{ from: "a.jpg", to: "one.jpg", temp: ".renamer-txn-crash-0" }]
+    }));
+    try {
+      assert.throws(() => prepareDirectory(directory), /conflicts/);
+      assert.deepEqual(namesIn(directory), [".renamer-transaction.json", ".renamer-txn-crash-0", "a.jpg"]);
+    } finally { remove(directory); }
+  });
+});
+
+test("retains committed state when cleanup fails and cleans it next run", () => {
+  const directory = directoryWith(["a.jpg"]);
+  let failed = false;
+  const ops = {
+    ...fs,
+    unlinkSync(file) {
+      if (!failed && path.basename(file) === ".renamer-transaction.json") {
+        failed = true;
+        const error = new Error("injected cleanup failure");
+        error.code = "EACCES";
+        throw error;
+      }
+      return fs.unlinkSync(file);
+    }
+  };
+  try {
+    const result = applyRenames(directory, [{ from: "a.jpg", to: "one.jpg" }], { ops, id: "cleanup" });
+    assert.equal(result.cleanupPending, true);
+    assert.deepEqual(namesIn(directory), [".renamer-transaction.json", "one.jpg"]);
+    assert.deepEqual(prepareDirectory(directory), { recovered: false, cleaned: true });
+    assert.deepEqual(namesIn(directory), ["one.jpg"]);
+  } finally {
+    remove(directory);
+  }
+});

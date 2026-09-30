@@ -1,0 +1,81 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Q1 asked whether to skip, generate an alternative, or abort, and the user chose abort with no overwrite or skipping."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Q5 and Q6 asked about runtime rollback and the attainable atomicity contract, and the user chose best-effort transactional rollback."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "Q9 addressed only exact same-name mappings, not whether files already matching the target naming scheme belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "missed",
+      "justification": "The agent never specifically asked how to handle a target occupied by a source that would itself move later in the same run."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "The agent never asked or settled what a second identical run should do."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The agent never asked or settled the semantics of case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "Q3, Q4, and Q7 asked about clash details, aborted-run output, exit status, runtime errors, and rollback-failure reporting."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "asked",
+      "justification": "Q4 and Q8 asked whether plans should be printed before execution or only completed renames after full success, and the user chose the latter."
+    }
+  ],
+  "forbiddenAsked": [
+    "stream-convention"
+  ],
+  "questionQuality": {
+    "totalQuestions": 12,
+    "approvalGates": 1,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 9,
+    "withConcreteOptions": 11,
+    "withRecommendation": 11,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session thoroughly settled collision handling, practical rollback, and failure diagnostics, and those choices are visible in the implementation. It nevertheless missed self-inclusion, transient collisions, repeat-run behavior, and case-only filesystem behavior; the implementation also cannot strictly guarantee either acceptance goal because rollback can fail and the existence-check/rename sequence has an overwrite race on filesystems where rename replaces an existing target.",
+  "rubricMaterialCount": 8
+}

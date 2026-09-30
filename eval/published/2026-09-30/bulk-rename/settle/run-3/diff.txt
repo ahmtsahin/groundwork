@@ -1,0 +1,448 @@
+ADDED docs/decisions/2026-09-30-collision-safe-renames.md
+# Collision-safe rename batches
+
+## Request as understood
+
+Fix the bulk renamer so an existing target name cannot stop a run halfway and leave earlier files renamed.
+
+## Path
+
+Bounded. The single-directory rename flow already existed in `src/rename.js`; this changes its validation and application behavior without adding a new public subsystem or persistent format.
+
+## Questions and answers
+
+1. What should happen when a final target belongs to an unrelated existing file? **Cancel the batch.**
+2. What should happen to earlier successful steps after an unexpected apply failure? **Roll back the batch best-effort.**
+3. What should happen when another invocation overlaps on the same directory? **Refuse overlap.**
+4. What should happen to a well-formed lock owned by a dead local PID? **Reclaim it automatically.**
+5. What should stdout contain when validation rejects a batch? **No plan; put the diagnostic on stderr and exit nonzero.**
+6. Is the resolved contract complete? **Implement it.**
+
+## Probe ledger
+
+1. Scope exclusions — **repository:** renaming remains non-recursive and undo journals remain excluded by `README.md` (“Out of scope”) and `src/match.js` (“Deliberately not recursive”).
+2. Empty input — **repository:** `planRenames` maps an empty match list to an empty plan; `applyRenames` loops over no steps (`src/rename.js`).
+3. Duplicate input/target — **user:** collision policy question → cancel the batch; duplicate final targets are validated before mutation by `test/rename.test.js`, “duplicate final targets reject the entire batch”.
+4. Concurrent input — **user:** overlap policy question → refuse a second renamer invocation while one is applying; `test/rename.test.js`, “a live directory lock refuses an overlapping run”, proves the writer pair is two invocations on the same directory and the second refuses rather than accepting newer input.
+5. Partial input — **repository:** `matchFiles` obtains complete directory entries synchronously before filtering and sorting (`src/match.js`); there is no streaming or partial request shape.
+6. Repeated input — **repository:** matching and lexical sorting are deterministic, and unchanged `from === to` steps are no-ops (`src/match.js`; `src/rename.js`).
+7. Failed input — **user:** apply-failure question → rollback earlier work best-effort when a planned source becomes missing/unreadable or a filesystem rename fails; collision question → reject an already-existing unrelated target before mutation. Proven by “a collision rejects the entire batch before changing files” and “an apply failure rolls completed work back” in `test/rename.test.js`.
+8. Where state lives — **user:** overlap policy question → a `.renamer.lock` in the operated directory; rename staging also uses temporary names in that directory (`src/rename.js`, `LOCK_NAME` and `applyRenames`).
+9. How long state survives — **user:** stale-lock question → the lock lasts for the apply operation, is removed in `finally`, and a well-formed dead-PID lock is reclaimed; proven by “a lock owned by a dead PID is reclaimed”.
+10. What migrates — **cannot arise:** no persistent rename data or prior lock format exists; `README.md` excludes a journal and the pre-change repository contained no state files.
+11. Who else reads the shape — **repository:** only this CLI calls `planRenames` and `applyRenames` (`src/cli.js`); the lock is new internal coordination state.
+12. Whether compatibility breaks — **repository:** the command arguments and exported function names remain unchanged (`src/cli.js`, `src/rename.js`); successful stdout retains the existing `from -> to` format.
+13. Who may perform the operation — **repository:** existing OS filesystem permissions and the local CLI remain the trust boundary (`src/cli.js`); no service or remote interface exists.
+14. What is validated — **user:** collision question → reject unrelated existing and duplicate final targets before mutation, while planned sources may occupy planned targets; proven by the collision, duplicate-target, and occupied-source tests in `test/rename.test.js`.
+15. What is recorded — **user:** stale-lock question → record local PID plus an ownership token in the transient lock so dead ownership can be distinguished and safe cleanup verified (`src/rename.js`, `acquireLock`/`releaseLock`).
+16. What the user sees on failure — **user:** rejection-output question → no stdout plan, a stderr diagnostic, and a nonzero exit; proven by “the CLI emits no plan when validation rejects it”.
+17. What is left behind on failure — **user:** apply-failure question → earlier operations are restored best-effort and rollback failures are appended to the error; process death during mutation cannot guarantee rollback (`src/rename.js`, `rollback`).
+18. Seam placement — **repository:** extend the existing `applyRenames` function and CLI flow rather than opening a new interface (`src/rename.js`, `src/cli.js`).
+
+## Resolved contract
+
+Apply the existing deterministic plan as an atomic-as-practical batch. Before mutation, reject unrelated occupied targets and duplicate final targets; allow a target occupied by another source in the same plan. Serialize application per directory with a local PID lock, reclaim a well-formed lock when its PID is dead, and refuse live or malformed locks. Stage moves to support cycles and roll back completed work best-effort after unexpected apply failures. Print successful moves to stdout only after the batch succeeds; send failures to stderr and exit nonzero. Recursive operation, undo journals, cross-machine locking, and guaranteed recovery from process death remain excluded.
+
+The proof is `node test/rename.test.js`: eight tests passed, covering numbering, collision preflight, occupied-source targets, duplicate targets, rollback, live-lock refusal, dead-lock reclamation, and CLI rejection output. `node --check src/rename.js` and `node --check src/cli.js` also passed. The repository's configured `npm test` could not start its test worker in the managed Windows sandbox (`spawn EPERM`), so the same `node:test` file was executed directly in-process.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+try {
+  const plan = planRenames(directory, pattern, replacement);
+  applyRenames(directory, plan);
+
+  for (const step of plan) {
+    process.stdout.write(`${step.from} -> ${step.to}\n`);
+  }
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync
+} from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+const LOCK_NAME = ".renamer.lock";
+const defaultOperations = { renameSync };
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+function processIsRunning(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== "ESRCH";
+  }
+}
+
+function acquireLock(directory) {
+  const lockPath = path.join(directory, LOCK_NAME);
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const token = randomUUID();
+    try {
+      const descriptor = openSync(lockPath, "wx");
+      try {
+        writeFileSync(descriptor, JSON.stringify({ pid: process.pid, token }));
+      } finally {
+        closeSync(descriptor);
+      }
+      return { lockPath, token };
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+
+      let lock;
+      try {
+        lock = JSON.parse(readFileSync(lockPath, "utf8"));
+      } catch {
+        throw new Error(`renamer is locked by an unreadable lock: ${lockPath}`);
+      }
+
+      if (!Number.isInteger(lock.pid) || lock.pid <= 0 || typeof lock.token !== "string") {
+        throw new Error(`renamer is locked by a malformed lock: ${lockPath}`);
+      }
+      if (processIsRunning(lock.pid)) {
+        throw new Error(`renamer is already running for this directory (PID ${lock.pid})`);
+      }
+
+      try {
+        unlinkSync(lockPath);
+      } catch (unlinkError) {
+        if (unlinkError.code !== "ENOENT") throw unlinkError;
+      }
+    }
+  }
+
+  throw new Error(`could not acquire renamer lock: ${lockPath}`);
+}
+
+function releaseLock(lock) {
+  try {
+    const current = JSON.parse(readFileSync(lock.lockPath, "utf8"));
+    if (current.token === lock.token) unlinkSync(lock.lockPath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      process.stderr.write(`warning: could not remove renamer lock: ${error.message}\n`);
+    }
+  }
+}
+
+function validatePlan(directory, plan) {
+  const targets = new Set();
+  const key = (name) => {
+    const resolved = path.resolve(directory, name);
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+  };
+  const sources = new Set(plan.map((step) => key(step.from)));
+
+  for (const step of plan) {
+    const target = key(step.to);
+    if (targets.has(target)) throw new Error(`duplicate target name: ${step.to}`);
+    targets.add(target);
+
+    if (existsSync(path.resolve(directory, step.to)) && !sources.has(target) && key(step.from) !== target) {
+      throw new Error(`target already exists: ${step.to}`);
+    }
+  }
+}
+
+function rollback(directory, staged, completed, operations) {
+  const failures = [];
+
+  for (const item of [...completed].reverse()) {
+    try {
+      operations.renameSync(path.join(directory, item.to), path.join(directory, item.temp));
+    } catch (error) {
+      failures.push(`${item.to}: ${error.message}`);
+    }
+  }
+
+  for (const item of [...staged].reverse()) {
+    if (!existsSync(path.join(directory, item.temp))) continue;
+    try {
+      operations.renameSync(path.join(directory, item.temp), path.join(directory, item.from));
+    } catch (error) {
+      failures.push(`${item.from}: ${error.message}`);
+    }
+  }
+
+  return failures;
+}
+
+export function applyRenames(directory, plan, operations = defaultOperations) {
+  const lock = acquireLock(directory);
+  const staged = [];
+  const completed = [];
+
+  try {
+    validatePlan(directory, plan);
+
+    for (const [index, step] of plan.entries()) {
+      if (step.from === step.to) continue;
+      const temp = `.renamer-${lock.token}-${index}.tmp`;
+      operations.renameSync(path.join(directory, step.from), path.join(directory, temp));
+      staged.push({ ...step, temp });
+    }
+
+    for (const item of staged) {
+      operations.renameSync(path.join(directory, item.temp), path.join(directory, item.to));
+      completed.push(item);
+    }
+  } catch (error) {
+    const failures = rollback(directory, staged, completed, operations);
+    if (failures.length > 0) error.message += `; rollback failures: ${failures.join("; ")}`;
+    throw error;
+  } finally {
+    releaseLock(lock);
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { applyRenames, planRenames } from "../src/rename.js";
+
+function temporaryDirectory(t) {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "renamer-test-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+function files(directory) {
+  return readdirSync(directory).sort();
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("a collision rejects the entire batch before changing files", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "photo-002.jpg"), "unrelated");
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "photo-001.jpg" },
+      { from: "b.jpg", to: "photo-002.jpg" }
+    ]),
+    /target already exists: photo-002\.jpg/
+  );
+  assert.deepEqual(files(directory), ["a.jpg", "b.jpg", "photo-002.jpg"]);
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+});
+
+test("a target occupied by another planned source is supported", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "photo-001.jpg"), "old-one");
+
+  applyRenames(directory, [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "photo-001.jpg", to: "photo-002.jpg" }
+  ]);
+
+  assert.deepEqual(files(directory), ["photo-001.jpg", "photo-002.jpg"]);
+  assert.equal(readFileSync(path.join(directory, "photo-001.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "photo-002.jpg"), "utf8"), "old-one");
+});
+
+test("duplicate final targets reject the entire batch", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "photo.jpg" },
+      { from: "b.jpg", to: "photo.jpg" }
+    ]),
+    /duplicate target name: photo\.jpg/
+  );
+  assert.deepEqual(files(directory), ["a.jpg", "b.jpg"]);
+});
+
+test("an apply failure rolls completed work back", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  let calls = 0;
+  const operations = {
+    renameSync(from, to) {
+      calls += 1;
+      if (calls === 4) throw new Error("simulated I/O failure");
+      renameSync(from, to);
+    }
+  };
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "one.jpg" },
+      { from: "b.jpg", to: "two.jpg" }
+    ], operations),
+    /simulated I\/O failure/
+  );
+  assert.deepEqual(files(directory), ["a.jpg", "b.jpg"]);
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "b.jpg"), "utf8"), "b");
+});
+
+test("a live directory lock refuses an overlapping run", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(
+    path.join(directory, ".renamer.lock"),
+    JSON.stringify({ pid: process.pid, token: "active" })
+  );
+
+  assert.throws(
+    () => applyRenames(directory, [{ from: "a.jpg", to: "b.jpg" }]),
+    /already running/
+  );
+  assert.deepEqual(files(directory), [".renamer.lock", "a.jpg"]);
+});
+
+test("a lock owned by a dead PID is reclaimed", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(
+    path.join(directory, ".renamer.lock"),
+    JSON.stringify({ pid: 2147483647, token: "stale" })
+  );
+
+  applyRenames(directory, [{ from: "a.jpg", to: "b.jpg" }]);
+  assert.deepEqual(files(directory), ["b.jpg"]);
+});
+
+test("the CLI emits no plan when validation rejects it", async (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "photo-001.jpg"), "unrelated");
+
+  const originalArgv = process.argv;
+  const originalExitCode = process.exitCode;
+  const originalWrite = process.stdout.write;
+  const originalError = console.error;
+  let stdout = "";
+  let stderr = "";
+  process.argv = [process.execPath, path.resolve("src/cli.js"), directory, "a.jpg", "photo-#.jpg"];
+  process.stdout.write = (chunk) => { stdout += chunk; return true; };
+  console.error = (message) => { stderr += `${message}\n`; };
+  process.exitCode = undefined;
+
+  try {
+    await import("../src/cli.js?collision-test");
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.argv = originalArgv;
+    process.stdout.write = originalWrite;
+    console.error = originalError;
+    process.exitCode = originalExitCode;
+  }
+
+  assert.equal(stdout, "");
+  assert.match(stderr, /target already exists: photo-001\.jpg/);
+  assert.deepEqual(files(directory), ["a.jpg", "photo-001.jpg"]);
+});

@@ -1,0 +1,80 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Q1 explicitly asked what should happen when a target already exists, and the user required refusing the whole run without changes."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Q3 explicitly asked whether zero-change behavior must cover all failures, and the user required rollback after unexpected failures."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "Q2 and Q7 asked how to handle sources already at their intended target, and the user chose to omit exact no-ops."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "Q2 explicitly asked whether an occupied target that the plan would later vacate should be allowed, and the user chose rejection."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "The agent never asked what a second identical run should do or explicitly settled that behavior from README.md."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The transcript never addresses case-only renames or case-insensitive filesystem semantics."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "Q4, Q5, and Q8 asked about refused-run output, exit status, and rollback-failure diagnostics."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The agent neither asked whether preview or confirmation belonged in the fix nor explicitly settled that safety must not depend on preview."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 10,
+    "approvalGates": 1,
+    "withSingleAxis": 6,
+    "recommendationAccepted": 8,
+    "withConcreteOptions": 5,
+    "withRecommendation": 9,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session thoroughly specified collision handling, rollback, and failure reporting, and the implementation visibly follows those choices. It over-questioned low-level failure details while missing idempotency, case-insensitive filesystems, and preview policy; moreover, the check-then-rename race can still overwrite a newly created target, so the absolute acceptance guarantees are not met.",
+  "rubricMaterialCount": 8
+}

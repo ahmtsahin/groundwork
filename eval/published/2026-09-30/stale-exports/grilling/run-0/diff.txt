@@ -1,0 +1,574 @@
+ADDED src/cli-runner.js
+import { exportOrders, toCsv } from "./exporter.js";
+
+export function parseArguments(args) {
+  const allowStale = args[0] === "--allow-stale";
+  const positional = allowStale ? args.slice(1) : args;
+  if (positional.length !== 2 || positional.some((argument) => argument.startsWith("-"))) {
+    throw new Error("usage: reportkit [--allow-stale] <from> <to>");
+  }
+  return { allowStale, from: positional[0], to: positional[1] };
+}
+
+export async function runCli(args, options = {}) {
+  const {
+    stdout = process.stdout,
+    stderr = process.stderr,
+    exportOrdersFn = exportOrders
+  } = options;
+
+  try {
+    const { allowStale, from, to } = parseArguments(args);
+    const rows = await exportOrdersFn(from, to, { allowStale });
+    stdout.write(toCsv(rows));
+    return 0;
+  } catch (error) {
+    stderr.write(`reportkit: ${error.message}\n`);
+    return 1;
+  }
+}
+
+
+MODIFIED README.md
+--- before ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Not decided
+
+Whether ad hoc runs should see fresher data than the nightly batch does.
+
+--- after ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## Usage
+
+- `reportkit <from> <to>` writes a strict, fresh CSV export to stdout.
+- `reportkit --allow-stale <from> <to>` enables the six-hour range cache for
+  stale-tolerant batch work.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. It must pass `--allow-stale`; the disk
+  cache keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Snapshot publication contract
+
+After writing `data/orders.json`, the upstream sync atomically replaces
+`data/orders.snapshot.json`. The sidecar binds the completed file to its
+publication time:
+
+```json
+{
+  "version": 1,
+  "generatedAt": "2026-09-30T12:00:00.000Z",
+  "sha256": "<lowercase SHA-256 of the exact orders.json bytes>"
+}
+```
+
+Strict exports reject snapshots older than 15 minutes. Both modes reject
+invalid markers, digest mismatches, and timestamps more than one minute in the
+future. Deploy the upstream marker first, then switch the nightly caller to
+`--allow-stale`, before deploying this version of ReportKit.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync
+} from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+const CACHE_VERSION = 1;
+
+// Kept for the explicitly stale-tolerant nightly batch.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+export const FUTURE_SKEW_MS = 60 * 1000;
+
+export function cachePath(key, cacheDirectory = CACHE_DIR) {
+  return path.join(cacheDirectory, `${key}.json`);
+}
+
+function validIsoTimestamp(value) {
+  if (typeof value !== "string") return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.valueOf()) && date.toISOString() === value;
+}
+
+function validRows(rows) {
+  return Array.isArray(rows) && rows.every((row) =>
+    row !== null &&
+    typeof row === "object" &&
+    "id" in row &&
+    "placedAt" in row &&
+    "total" in row &&
+    "status" in row
+  );
+}
+
+export function readCache(key, options = {}) {
+  const { ttlMs = DEFAULT_TTL_MS, now = Date.now(), cacheDirectory = CACHE_DIR } = options;
+  const file = cachePath(key, cacheDirectory);
+  if (!existsSync(file)) return null;
+
+  try {
+    const payload = JSON.parse(readFileSync(file, "utf8"));
+    if (
+      payload.version !== CACHE_VERSION ||
+      !Number.isFinite(payload.writtenAt) ||
+      payload.writtenAt > now + FUTURE_SKEW_MS ||
+      now - payload.writtenAt > ttlMs ||
+      !validIsoTimestamp(payload.snapshot?.generatedAt) ||
+      new Date(payload.snapshot.generatedAt).valueOf() > now + FUTURE_SKEW_MS ||
+      !/^[a-f0-9]{64}$/.test(payload.snapshot?.sha256) ||
+      !validRows(payload.rows)
+    ) {
+      return null;
+    }
+
+    return { rows: payload.rows, snapshot: payload.snapshot };
+  } catch {
+    // A legacy, corrupt, or concurrently incomplete entry is a cache miss.
+    return null;
+  }
+}
+
+export function writeCache(key, rows, snapshot, options = {}) {
+  const { cacheDirectory = CACHE_DIR } = options;
+  mkdirSync(cacheDirectory, { recursive: true });
+  const destination = cachePath(key, cacheDirectory);
+  const temporary = `${destination}.${process.pid}.${randomUUID()}.tmp`;
+  const payload = JSON.stringify({
+    version: CACHE_VERSION,
+    writtenAt: Date.now(),
+    snapshot,
+    rows
+  });
+
+  try {
+    writeFileSync(temporary, payload, { encoding: "utf8", flag: "wx" });
+    renameSync(temporary, destination);
+  } catch (error) {
+    try {
+      unlinkSync(temporary);
+    } catch {
+      // The rename may already have consumed the temporary file.
+    }
+    throw error;
+  }
+}
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { runCli } from "./cli-runner.js";
+
+process.exitCode = await runCli(process.argv.slice(2));
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { loadValidatedSnapshot, SnapshotPolicyError } from "./store.js";
+
+const RETRY_DELAYS_MS = [100, 250];
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function loadWithRetries(options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await loadValidatedSnapshot(options);
+    } catch (error) {
+      if (error instanceof SnapshotPolicyError || attempt >= RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      await delay(RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
+export async function exportOrders(from, to, options = {}) {
+  const { allowStale = false } = options;
+  const key = cacheKey(from, to);
+
+  if (allowStale) {
+    const cached = readCache(key, { cacheDirectory: options.cacheDirectory });
+    if (cached) return cached.rows;
+  }
+
+  const { orders, snapshot } = await loadWithRetries({ ...options, allowStale });
+  const rows = orders
+    .filter((order) => order.placedAt >= from && order.placedAt <= to)
+    .map((order) => ({
+      id: order.id,
+      placedAt: order.placedAt,
+      total: order.total,
+      status: order.status
+    }));
+
+  if (allowStale) {
+    writeCache(key, rows, snapshot, { cacheDirectory: options.cacheDirectory });
+  }
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
+export const MAX_SNAPSHOT_AGE_MS = 15 * 60 * 1000;
+export const FUTURE_SKEW_MS = 60 * 1000;
+
+export class SnapshotPolicyError extends Error {}
+
+function parseMarker(raw, now, allowStale) {
+  let marker;
+  try {
+    marker = JSON.parse(raw);
+  } catch (error) {
+    error.transientSnapshotFailure = true;
+    throw error;
+  }
+
+  if (
+    marker?.version !== 1 ||
+    typeof marker.generatedAt !== "string" ||
+    typeof marker.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(marker.sha256)
+  ) {
+    throw new SnapshotPolicyError("invalid snapshot marker");
+  }
+
+  const generatedAt = new Date(marker.generatedAt);
+  if (Number.isNaN(generatedAt.valueOf()) || generatedAt.toISOString() !== marker.generatedAt) {
+    throw new SnapshotPolicyError("invalid snapshot timestamp");
+  }
+
+  const age = now - generatedAt.valueOf();
+  if (age < -FUTURE_SKEW_MS) {
+    throw new SnapshotPolicyError("snapshot timestamp is in the future");
+  }
+  if (!allowStale && age > MAX_SNAPSHOT_AGE_MS) {
+    throw new SnapshotPolicyError("snapshot is older than 15 minutes");
+  }
+
+  return marker;
+}
+
+export async function loadValidatedSnapshot(options = {}) {
+  const {
+    allowStale = false,
+    dataPath = "data/orders.json",
+    markerPath = "data/orders.snapshot.json",
+    now = Date.now()
+  } = options;
+
+  const markerBeforeRaw = await readFile(markerPath, "utf8");
+  const data = await readFile(dataPath);
+  const markerAfterRaw = await readFile(markerPath, "utf8");
+
+  if (markerBeforeRaw !== markerAfterRaw) {
+    const error = new Error("snapshot marker changed during read");
+    error.transientSnapshotFailure = true;
+    throw error;
+  }
+
+  const marker = parseMarker(markerBeforeRaw, now, allowStale);
+  const digest = createHash("sha256").update(data).digest("hex");
+  if (digest !== marker.sha256) {
+    const error = new Error("snapshot digest does not match orders data");
+    error.transientSnapshotFailure = true;
+    throw error;
+  }
+
+  let orders;
+  try {
+    orders = JSON.parse(data.toString("utf8"));
+  } catch (error) {
+    error.transientSnapshotFailure = true;
+    throw error;
+  }
+  if (!Array.isArray(orders)) {
+    throw new SnapshotPolicyError("orders snapshot must contain an array");
+  }
+
+  return {
+    orders,
+    snapshot: { generatedAt: marker.generatedAt, sha256: marker.sha256 }
+  };
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { exportOrders, toCsv } from "../src/exporter.js";
+import { readCache } from "../src/cache.js";
+import { runCli } from "../src/cli-runner.js";
+
+function fixture(orders, generatedAt = new Date().toISOString()) {
+  const root = mkdtempSync(path.join(tmpdir(), "reportkit-test-"));
+  const dataDirectory = path.join(root, "data");
+  mkdirSync(dataDirectory);
+  const data = JSON.stringify(orders);
+  const sha256 = createHash("sha256").update(data).digest("hex");
+  const dataPath = path.join(dataDirectory, "orders.json");
+  const markerPath = path.join(dataDirectory, "orders.snapshot.json");
+  writeFileSync(dataPath, data);
+  writeFileSync(markerPath, JSON.stringify({ version: 1, generatedAt, sha256 }));
+  return { root, dataPath, markerPath };
+}
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("strict exports read a current digest-bound snapshot", async () => {
+  const source = fixture([
+    { id: "o-1", placedAt: "2026-01-02", total: 10, status: "paid" },
+    { id: "o-2", placedAt: "2026-02-01", total: 20, status: "paid" }
+  ]);
+
+  const rows = await exportOrders("2026-01-01", "2026-01-31", source);
+  assert.deepEqual(rows, [
+    { id: "o-1", placedAt: "2026-01-02", total: 10, status: "paid" }
+  ]);
+});
+
+test("a valid empty snapshot produces a header-only CSV", async () => {
+  const source = fixture([]);
+  const rows = await exportOrders("2026-01-01", "2026-01-31", source);
+  assert.equal(toCsv(rows), "id,placedAt,total,status");
+});
+
+test("strict exports reject snapshots older than fifteen minutes", async () => {
+  const now = Date.now();
+  const source = fixture([], new Date(now - 15 * 60 * 1000 - 1).toISOString());
+  await assert.rejects(
+    exportOrders("2026-01-01", "2026-01-31", { ...source, now }),
+    /older than 15 minutes/
+  );
+});
+
+test("allow-stale exports accept an old but valid snapshot", async () => {
+  const now = Date.now();
+  const source = fixture([], new Date(now - 24 * 60 * 60 * 1000).toISOString());
+  const cacheDirectory = path.join(source.root, ".reportkit-cache");
+  const rows = await exportOrders("2026-01-01", "2026-01-31", {
+    ...source,
+    now,
+    allowStale: true,
+    cacheDirectory
+  });
+  assert.deepEqual(rows, []);
+
+  writeFileSync(source.markerPath, "invalid current marker");
+  const cachedRows = await exportOrders("2026-01-01", "2026-01-31", {
+    ...source,
+    now,
+    allowStale: true,
+    cacheDirectory
+  });
+  assert.deepEqual(cachedRows, []);
+});
+
+test("exports reject data that does not match the completion marker", async () => {
+  const source = fixture([]);
+  writeFileSync(source.dataPath, JSON.stringify([{ id: "unpublished" }]));
+  await assert.rejects(
+    exportOrders("2026-01-01", "2026-01-31", source),
+    /digest does not match/
+  );
+});
+
+test("legacy and malformed cache entries are cache misses", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "reportkit-cache-test-"));
+  const previousDirectory = process.cwd();
+  try {
+    process.chdir(root);
+    mkdirSync(".reportkit-cache");
+    writeFileSync(
+      path.join(".reportkit-cache", "legacy.json"),
+      JSON.stringify({ writtenAt: Date.now(), rows: [] })
+    );
+    assert.equal(readCache("legacy"), null);
+    writeFileSync(path.join(".reportkit-cache", "broken.json"), "{");
+    assert.equal(readCache("broken"), null);
+  } finally {
+    process.chdir(previousDirectory);
+  }
+});
+
+test("CLI failures write no CSV bytes", async () => {
+  let stdout = "";
+  let stderr = "";
+  const status = await runCli(["2026-01-01", "2026-01-31"], {
+    stdout: { write: (value) => { stdout += value; } },
+    stderr: { write: (value) => { stderr += value; } },
+    exportOrdersFn: async () => { throw new Error("snapshot is older than 15 minutes"); }
+  });
+  assert.equal(status, 1);
+  assert.equal(stdout, "");
+  assert.match(stderr, /older than 15 minutes/);
+});
+
+test("CLI rejects unknown flags and extra arguments", async () => {
+  let stdout = "";
+  let stderr = "";
+  const status = await runCli(["--fresh", "a", "b"], {
+    stdout: { write: (value) => { stdout += value; } },
+    stderr: { write: (value) => { stderr += value; } }
+  });
+  assert.equal(status, 1);
+  assert.equal(stdout, "");
+  assert.match(stderr, /usage: reportkit/);
+});

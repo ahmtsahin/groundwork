@@ -1,0 +1,385 @@
+ADDED docs/decisions/2026-09-30-fresh-exports.md
+# Fresh exports
+
+## Request as understood
+
+Fix report exports that sometimes return stale order rows while retaining an explicit reusable-cache mode for the performance-sensitive nightly batch and preserving the existing CSV schema.
+
+## Path
+
+Bounded. The export, source-read, and disk-cache flow already exists in `src/exporter.js`, `src/store.js`, and `src/cache.js`; this changes behavior inside that flow without adding a subsystem or schema.
+
+## Questions and answers
+
+1. Which exports must observe an updated upstream order file? **Ad hoc default:** normal runs are fresh and the nightly caller explicitly selects cached behavior.
+2. How does the nightly caller request reusable caching? **`--cached` flag.**
+3. Does a normal fresh export update the reusable cache? **Yes, seed the cache.**
+4. What happens when the current source is missing, unreadable, or malformed? **Fail clearly without stale CSV.**
+5. What happens if a valid newer source arrives during a fresh export? **Finish from the complete snapshot with which the invocation started.**
+6. Which snapshot remains cached after overlapping fresh exports? **The newest source version, regardless of completion order.**
+7. Is the resolved contract complete? **Implement it.**
+
+## Probe ledger
+
+1. Scope exclusions — **user:** the freshness-policy and confirmation answers exclude modifying the absent `ops/nightly.sh`; its owner must add `--cached`.
+2. Empty input/result — **repository:** `src/exporter.js` maps an empty filtered result and `toCsv` emits the stable header; this behavior is preserved and the header is asserted by `test/exporter.test.js`.
+3. Duplicate input — **repository:** `src/store.js` uses `Array.prototype.filter` and `src/exporter.js` uses `map`, preserving duplicate source rows.
+4. Concurrent input change — **user:** the mid-run question chose finishing from the complete source snapshot opened at invocation start when the external sync writer completes a newer rewrite.
+5. Partial input — **user:** the bad-source question chose a clear nonzero failure and no stale CSV for partially written/malformed `data/orders.json`.
+6. Repeated input — **user:** the cache-seeding question chose replacing/seeding reusable cache state after every successful normal run; `--cached` may reuse it.
+7. Failed input — **user:** the bad-source question covers missing, unreadable, and malformed `data/orders.json`; fail clearly without stale output. **Repository:** corrupt internal cache JSON is derived state and `test/exporter.test.js` proves it is treated as a miss and rebuilt.
+8. State location — **repository:** cache entries remain under `.reportkit-cache` via `CACHE_DIR` in `src/cache.js`.
+9. State lifetime — **repository:** cached mode retains `DEFAULT_TTL_MS`, six hours, in `src/cache.js`.
+10. State migration — **repository:** legacy cache payloads remain readable because `readCache` still consumes `writtenAt` and `rows`; their absent source version ranks older on the next write in `src/cache.js`.
+11. Shape readers — **repository:** `README.md` identifies Google Sheets as the CSV consumer and `src/exporter.js` owns the internal cache reader.
+12. Compatibility break — **repository:** `test/exporter.test.js` asserts the 2.x CSV order `id,placedAt,total,status`; the optional leading flag leaves the existing two-position normal invocation valid. **User:** nightly cached behavior now requires its external caller to add `--cached`.
+13. Authorization — **cannot arise:** this local CLI has no identities or access-control boundary; the searched entry point `src/cli.js` exposes none.
+14. Validation — **repository:** date/range and order-field validation remain as implemented by lexical filtering in `src/store.js`; malformed JSON fails at parsing. No schema expansion is part of this bounded freshness change.
+15. Recording/audit — **repository:** the only persistent operational record remains the cache payload in `src/cache.js`, now including `sourceVersion`; no audit facility exists in the CLI or README contract.
+16. User-visible failure — **user:** the bad-source answer requires a clear nonzero failure with no stale CSV; `src/cli.js` prints a prefixed error to stderr.
+17. Failure leftovers — **repository:** `src/cache.js` writes a unique temporary file, renames it atomically, and removes temporary and lock files in `finally`; a failed source read occurs before any cache write in `src/exporter.js`.
+18. Seam placement — **user:** the batch-interface answer extends the existing `src/cli.js` interface with `--cached`; no new interface is opened.
+
+The concurrent cache-writer pair is additionally closed by the user’s cache-race answer: when two CLI instances seed the same range from different valid source versions, the newest version remains, enforced through serialized comparison and atomic publication in `src/cache.js`.
+
+## Resolved contract and proof
+
+`reportkit <from> <to>` reads one complete current source snapshot, exports its rows, and seeds the disk cache. `reportkit --cached <from> <to>` may reuse a cache entry for the existing six-hour TTL. Bad source data fails nonzero without CSV or stale fallback. Corrupt derived cache data is rebuilt. Atomic cache publication prevents partial reads, and an older overlapping invocation cannot replace a newer source version. The CSV columns and order remain unchanged. The absent external nightly script is not modified.
+
+Proof: `node test/exporter.test.js` passes four focused tests covering CSV order, fresh/default and cached behavior, corrupt-cache recovery, and prevention of source-version regression. `node --check` passes for all four source modules. The repository’s configured `node --test` command could not launch its child test process in the execution sandbox (`spawn EPERM`), before test code loaded.
+
+
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import {
+  existsSync,
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  try {
+    const payload = JSON.parse(readFileSync(file, "utf8"));
+    if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+    return payload.rows;
+  } catch {
+    return null;
+  }
+}
+
+function readSourceVersion(file) {
+  try {
+    return JSON.parse(readFileSync(file, "utf8")).sourceVersion ?? -Infinity;
+  } catch {
+    return -Infinity;
+  }
+}
+
+function acquireLock(lock) {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    try {
+      return openSync(lock, "wx");
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
+  throw new Error(`timed out waiting for cache lock: ${lock}`);
+}
+
+export function writeCache(key, rows, sourceVersion) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  const file = cachePath(key);
+  const lock = `${file}.lock`;
+  const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  let lockFd;
+
+  try {
+    lockFd = acquireLock(lock);
+    if (readSourceVersion(file) > sourceVersion) return false;
+
+    writeFileSync(
+      temporary,
+      JSON.stringify({ writtenAt: Date.now(), sourceVersion, rows }),
+      "utf8"
+    );
+    renameSync(temporary, file);
+    return true;
+  } finally {
+    if (lockFd !== undefined) {
+      closeSync(lockFd);
+      rmSync(lock, { force: true });
+    }
+    rmSync(temporary, { force: true });
+  }
+}
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const args = process.argv.slice(2);
+const cached = args[0] === "--cached";
+const [from, to, ...extra] = cached ? args.slice(1) : args;
+
+if (!from || !to || extra.length > 0) {
+  console.error("usage: reportkit [--cached] <from> <to>");
+  process.exit(1);
+}
+
+try {
+  process.stdout.write(toCsv(exportOrders(from, to, { cached })));
+} catch (error) {
+  console.error(`reportkit: ${error.message}`);
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { loadOrdersSnapshot, ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to, { cached = false } = {}) {
+  if (cached) {
+    const hit = readCache(cacheKey(from, to));
+    if (hit) return hit;
+  }
+
+  const { orders, sourceVersion } = loadOrdersSnapshot();
+  const rows = ordersForRange(orders, from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows, sourceVersion);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { closeSync, fstatSync, openSync, readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrdersSnapshot() {
+  const fd = openSync("data/orders.json", "r");
+
+  try {
+    const contents = readFileSync(fd, "utf8");
+    const { mtimeMs } = fstatSync(fd);
+    return { orders: JSON.parse(contents), sourceVersion: mtimeMs };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+export function ordersForRange(orders, from, to) {
+  return orders.filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { cachePath, readCache, writeCache } from "../src/cache.js";
+import { exportOrders, toCsv } from "../src/exporter.js";
+
+function withWorkspace(run) {
+  const previous = process.cwd();
+  const workspace = mkdtempSync(path.join(tmpdir(), "reportkit-"));
+  mkdirSync(path.join(workspace, "data"));
+  process.chdir(workspace);
+  try {
+    return run(workspace);
+  } finally {
+    process.chdir(previous);
+    rmSync(workspace, { recursive: true, force: true });
+  }
+}
+
+function writeOrders(orders, modifiedAt) {
+  const file = path.join("data", "orders.json");
+  writeFileSync(file, JSON.stringify(orders));
+  utimesSync(file, modifiedAt, modifiedAt);
+}
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("normal exports are fresh while --cached behavior remains reusable", () => {
+  withWorkspace(() => {
+    const first = [{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }];
+    const second = [{ id: "a2", placedAt: "2026-01-02", total: 20, status: "paid" }];
+    writeOrders(first, new Date("2026-01-01T00:00:00Z"));
+
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-03"), first);
+    writeOrders(second, new Date("2026-01-01T00:01:00Z"));
+
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-03", { cached: true }), first);
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-03"), second);
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-03", { cached: true }), second);
+
+    writeFileSync(path.join("data", "orders.json"), "{broken");
+    assert.throws(() => exportOrders("2026-01-01", "2026-01-03"), SyntaxError);
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-03", { cached: true }), second);
+  });
+});
+
+test("a corrupt derived cache is rebuilt from current source data", () => {
+  withWorkspace(() => {
+    const rows = [{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }];
+    writeOrders(rows, new Date("2026-01-01T00:00:00Z"));
+    mkdirSync(".reportkit-cache");
+    writeFileSync(cachePath("orders-2026-01-01-2026-01-03"), "{broken");
+
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-03", { cached: true }), rows);
+  });
+});
+
+test("an older overlapping export cannot replace a newer cached snapshot", () => {
+  withWorkspace(() => {
+    writeCache("range", [{ id: "new" }], 20);
+    assert.equal(writeCache("range", [{ id: "old" }], 10), false);
+    assert.deepEqual(readCache("range"), [{ id: "new" }]);
+    assert.equal(JSON.parse(readFileSync(cachePath("range"), "utf8")).sourceVersion, 20);
+  });
+});

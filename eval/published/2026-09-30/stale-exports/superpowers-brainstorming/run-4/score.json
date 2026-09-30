@@ -1,0 +1,87 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 122128,
+    "tokens": {
+      "input": 266816,
+      "output": 4874,
+      "total": 271690
+    }
+  },
+  "interaction": {
+    "agentTurns": 3,
+    "userMessages": 2,
+    "nativeRounds": 0,
+    "humanInputs": 2,
+    "questionsAsked": 2,
+    "approvalGates": 1,
+    "decisionQuestions": 1
+  },
+  "questionQuality": {
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 1,
+    "depthTotal": 5,
+    "depthRate": 0.2,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "change-detection"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "closureRate": 0.556,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 5,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session selected and implemented a clear bounded approach that preserves nightly caching while making ad hoc exports fresh, and it avoided all forbidden questions. However, the questioning was shallow: after one bundled approach question it moved to an approval gate without covering snapshot consistency, concurrent rewrites, failure output, or retry bounds."
+}

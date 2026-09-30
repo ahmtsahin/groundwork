@@ -1,0 +1,526 @@
+MODIFIED README.md
+--- before ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Known rough edge
+
+If a target name already exists the run stops partway with an EEXIST error, and
+the files renamed before that point stay renamed. This is what people complain
+about.
+
+--- after ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Safety and recovery
+
+Before changing any name, renamer checks the complete plan. If a destination
+already exists, two inputs would produce the same destination, or a destination
+is another source in the plan, it reports every collision and changes nothing.
+Renames whose source and destination are identical are harmless no-ops.
+
+Each run uses a per-directory lock, same-directory staging names, and a durable
+write-ahead journal. Output is printed only after the entire batch commits. If
+an ordinary filesystem operation fails, renamer restores the original names.
+If a run is interrupted, the next invocation restores the original names,
+reports the recovery, and stops; rerun the command to start the requested batch.
+
+If journal state is inconsistent, renamer preserves every file and artifact,
+refuses new work, and prints manual recovery instructions rather than guessing.
+
+These are the strongest practical recovery guarantees available using portable
+Node built-ins. A multi-file batch cannot be one atomic filesystem operation.
+The journal cannot guarantee durability against every operating-system,
+filesystem, controller, or storage failure. The lock coordinates renamer
+processes, but unrelated programs can still modify the directory concurrently;
+Node has no portable atomic "rename without replacing" operation.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { applyRenames, planRenames, RenameError } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exitCode = 1;
+} else {
+  try {
+    const completed = applyRenames(
+      directory,
+      planRenames(directory, pattern, replacement)
+    );
+    for (const step of completed) {
+      process.stdout.write(`${step.from} -> ${step.to}\n`);
+    }
+  } catch (error) {
+    console.error(`renamer: ${error.message}`);
+    if (error instanceof RenameError) {
+      for (const detail of error.details) console.error(`  ${detail}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import {
+  closeSync, constants, existsSync, fsyncSync, openSync, readFileSync,
+  renameSync, unlinkSync, writeFileSync
+} from "node:fs";
+import path from "node:path";
+import { matchFiles } from "./match.js";
+
+export const JOURNAL_NAME = ".renamer-transaction.json";
+export const LOCK_NAME = ".renamer.lock";
+
+export class RenameError extends Error {
+  constructor(message, { code = "ERENAME", details = [] } = {}) {
+    super(message);
+    this.name = "RenameError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+function nameKey(name) {
+  const normalized = path.normalize(name);
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+function syncDirectory(directory) {
+  let descriptor;
+  try {
+    descriptor = openSync(directory, constants.O_RDONLY);
+    fsyncSync(descriptor);
+  } catch {
+    // Directory fsync is not supported uniformly (notably on Windows).
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function syncFile(descriptor) {
+  try {
+    fsyncSync(descriptor);
+  } catch (error) {
+    if (!["EINVAL", "ENOTSUP", "EPERM"].includes(error.code)) throw error;
+  }
+}
+
+function writeJournal(directory, journal) {
+  const target = path.join(directory, JOURNAL_NAME);
+  const temporary = `${target}.new`;
+  try {
+    writeFileSync(temporary, `${JSON.stringify(journal, null, 2)}\n`, { flag: "wx" });
+    const descriptor = openSync(temporary, "r");
+    try { syncFile(descriptor); } finally { closeSync(descriptor); }
+    renameSync(temporary, target);
+    syncDirectory(directory);
+  } catch (error) {
+    try { unlinkSync(temporary); } catch {}
+    throw error;
+  }
+}
+
+function removeJournal(directory) {
+  unlinkSync(path.join(directory, JOURNAL_NAME));
+  syncDirectory(directory);
+}
+
+function validateJournal(value) {
+  if (!value || value.version !== 1 || !Array.isArray(value.steps) ||
+      value.steps.some((step) => !step || typeof step.from !== "string" ||
+        typeof step.to !== "string" || typeof step.staged !== "string" ||
+        path.basename(step.from) !== step.from || path.basename(step.to) !== step.to ||
+        path.basename(step.staged) !== step.staged ||
+        !step.staged.startsWith(".renamer-stage-"))) {
+    throw new RenameError("recovery journal is invalid", { code: "ERECOVERY" });
+  }
+  const from = new Set(value.steps.map((step) => nameKey(step.from)));
+  const to = new Set(value.steps.map((step) => nameKey(step.to)));
+  const staged = new Set(value.steps.map((step) => nameKey(step.staged)));
+  if (from.size !== value.steps.length || to.size !== value.steps.length ||
+      staged.size !== value.steps.length ||
+      value.steps.some((step) => step.from === step.to || to.has(nameKey(step.from)))) {
+    throw new RenameError("recovery journal contains conflicting paths", { code: "ERECOVERY" });
+  }
+  return value;
+}
+
+function recoveryInstructions(directory, problems) {
+  return [
+    ...problems,
+    `Preserved transaction journal: ${path.join(directory, JOURNAL_NAME)}`,
+    "Inspect the listed original, staged, and target paths; restore each original manually.",
+    `Only after every original is restored, remove ${JOURNAL_NAME} and rerun the command.`
+  ];
+}
+
+function restoreOriginals(directory, journal) {
+  const problems = [];
+  for (const step of journal.steps) {
+    const locations = [step.from, step.staged, step.to];
+    const present = locations.filter((name) => existsSync(path.join(directory, name)));
+    if (present.length !== 1) {
+      problems.push(`${step.from}: expected one copy at [${locations.join(", ")}], found ${present.length}: [${present.join(", ")}]`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new RenameError("recovery state is inconsistent; no recovery moves were attempted", {
+      code: "ERECOVERY", details: recoveryInstructions(directory, problems)
+    });
+  }
+
+  for (const step of journal.steps) {
+    const original = path.join(directory, step.from);
+    if (existsSync(original)) continue;
+    const staged = path.join(directory, step.staged);
+    const target = path.join(directory, step.to);
+    try { renameSync(existsSync(staged) ? staged : target, original); }
+    catch (error) { problems.push(`${step.from}: ${error.message}`); }
+  }
+  if (problems.length > 0) {
+    throw new RenameError("rollback was incomplete", {
+      code: "ERECOVERY", details: recoveryInstructions(directory, problems)
+    });
+  }
+  removeJournal(directory);
+}
+
+function processIsAlive(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; }
+  catch (error) { return error.code === "EPERM"; }
+}
+
+function acquireLock(directory) {
+  const lockPath = path.join(directory, LOCK_NAME);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      writeFileSync(lockPath, `${JSON.stringify({ pid: process.pid })}\n`, { flag: "wx" });
+      return () => {
+        try { unlinkSync(lockPath); }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+      };
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      let owner;
+      try { owner = JSON.parse(readFileSync(lockPath, "utf8")); }
+      catch {
+        throw new RenameError(`transaction lock is invalid; preserved ${lockPath}`, { code: "ELOCKED" });
+      }
+      if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0) {
+        throw new RenameError(`transaction lock is invalid; preserved ${lockPath}`, { code: "ELOCKED" });
+      }
+      if (processIsAlive(owner.pid)) {
+        throw new RenameError(`operation already in progress in ${directory} (pid ${owner.pid})`, { code: "ELOCKED" });
+      }
+      try { unlinkSync(lockPath); }
+      catch (unlinkError) { if (unlinkError.code !== "ENOENT") throw unlinkError; }
+    }
+  }
+  throw new RenameError(`could not acquire transaction lock in ${directory}`, { code: "ELOCKED" });
+}
+
+function readJournal(directory) {
+  try {
+    return validateJournal(JSON.parse(readFileSync(path.join(directory, JOURNAL_NAME), "utf8")));
+  } catch (error) {
+    if (error instanceof RenameError) {
+      error.details = recoveryInstructions(directory, error.details);
+      throw error;
+    }
+    throw new RenameError(`cannot read recovery journal: ${error.message}`, {
+      code: "ERECOVERY", details: recoveryInstructions(directory, [])
+    });
+  }
+}
+
+function findCollisions(directory, plan) {
+  const collisions = [];
+  const targets = new Map();
+  const sources = new Set(plan.map((step) => nameKey(step.from)));
+  for (const step of plan) {
+    if (step.from === step.to) continue;
+    if (path.basename(step.to) !== step.to) {
+      collisions.push(`${step.to}: target must be a name in the selected directory`);
+      continue;
+    }
+    if (step.to === JOURNAL_NAME || step.to === `${JOURNAL_NAME}.new` ||
+        step.to === LOCK_NAME || step.to.startsWith(".renamer-stage-")) {
+      collisions.push(`${step.to}: target name is reserved for transaction recovery`);
+      continue;
+    }
+    const key = nameKey(step.to);
+    if (targets.has(key)) collisions.push(`${step.to}: duplicate target for ${targets.get(key)} and ${step.from}`);
+    else targets.set(key, step.from);
+    if (sources.has(key)) collisions.push(`${step.to}: target is another source in this plan`);
+    else if (existsSync(path.join(directory, step.to))) collisions.push(`${step.to}: target already exists`);
+  }
+  return collisions;
+}
+
+function createJournal(directory, plan) {
+  const id = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const steps = plan.filter((step) => step.from !== step.to).map((step, index) => ({
+    from: step.from, to: step.to, staged: `.renamer-stage-${id}-${index}`
+  }));
+  const occupied = steps.find((step) => existsSync(path.join(directory, step.staged)));
+  if (occupied) {
+    const detail = `${occupied.staged}: reserved staging path already exists`;
+    throw new RenameError(detail, { code: "ECOLLISION", details: [detail] });
+  }
+  return { version: 1, id, steps };
+}
+
+export function applyRenames(directory, plan) {
+  const release = acquireLock(directory);
+  try {
+    if (existsSync(path.join(directory, JOURNAL_NAME))) {
+      restoreOriginals(directory, readJournal(directory));
+      throw new RenameError("recovered an interrupted rename; rerun the command", {
+        code: "ERECOVERED", details: ["All original names were restored. No new rename plan was executed."]
+      });
+    }
+    const collisions = findCollisions(directory, plan);
+    if (collisions.length > 0) {
+      throw new RenameError(`found ${collisions.length} rename collision(s); nothing changed`, {
+        code: "ECOLLISION", details: collisions
+      });
+    }
+    const journal = createJournal(directory, plan);
+    if (journal.steps.length === 0) return [];
+    writeJournal(directory, journal);
+    try {
+      for (const step of journal.steps) renameSync(path.join(directory, step.from), path.join(directory, step.staged));
+      for (const step of journal.steps) renameSync(path.join(directory, step.staged), path.join(directory, step.to));
+    } catch (error) {
+      try { restoreOriginals(directory, journal); }
+      catch (recoveryError) {
+        throw new RenameError(`rename failed (${error.message}); ${recoveryError.message}`, {
+          code: "ERECOVERY", details: recoveryError.details
+        });
+      }
+      throw new RenameError(`rename failed and all original names were restored: ${error.message}`, {
+        code: "EROLLEDBACK", details: ["Nothing changed."]
+      });
+    }
+    removeJournal(directory);
+    return journal.steps.map(({ from, to }) => ({ from, to }));
+  } finally {
+    release();
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import {
+  applyRenames,
+  JOURNAL_NAME,
+  LOCK_NAME,
+  planRenames,
+  RenameError
+} from "../src/rename.js";
+
+function directoryWith(files) {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-test-"));
+  for (const [name, contents = name] of Object.entries(files)) {
+    writeFileSync(path.join(directory, name), contents);
+  }
+  return directory;
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("reports every collision without moving any file", () => {
+  const directory = directoryWith({ "a.jpg": "a", "b.jpg": "b", "x.jpg": "x" });
+  const plan = [
+    { from: "a.jpg", to: "x.jpg" },
+    { from: "b.jpg", to: "x.jpg" }
+  ];
+
+  assert.throws(
+    () => applyRenames(directory, plan),
+    (error) => error instanceof RenameError && error.code === "ECOLLISION" && error.details.length === 3
+  );
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "b.jpg"), "utf8"), "b");
+  assert.equal(readFileSync(path.join(directory, "x.jpg"), "utf8"), "x");
+});
+
+test("treats an exact self-rename as a no-op", () => {
+  const directory = directoryWith({ "a.jpg": "a" });
+  assert.deepEqual(applyRenames(directory, [{ from: "a.jpg", to: "a.jpg" }]), []);
+  assert.deepEqual(readdirSync(directory), ["a.jpg"]);
+});
+
+test("commits a complete batch and removes transaction metadata", () => {
+  const directory = directoryWith({ "a.jpg": "a", "b.jpg": "b" });
+  const completed = applyRenames(directory, [
+    { from: "a.jpg", to: "one.jpg" },
+    { from: "b.jpg", to: "two.jpg" }
+  ]);
+
+  assert.deepEqual(completed, [
+    { from: "a.jpg", to: "one.jpg" },
+    { from: "b.jpg", to: "two.jpg" }
+  ]);
+  assert.equal(readFileSync(path.join(directory, "one.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "two.jpg"), "utf8"), "b");
+  assert.equal(existsSync(path.join(directory, JOURNAL_NAME)), false);
+  assert.equal(existsSync(path.join(directory, LOCK_NAME)), false);
+});
+
+test("restores an interrupted transaction and refuses the new plan", () => {
+  const directory = directoryWith({ ".renamer-stage-crash-0": "a", "b.jpg": "b" });
+  writeFileSync(path.join(directory, JOURNAL_NAME), JSON.stringify({
+    version: 1,
+    id: "crash",
+    steps: [
+      { from: "a.jpg", to: "one.jpg", staged: ".renamer-stage-crash-0" },
+      { from: "b.jpg", to: "two.jpg", staged: ".renamer-stage-crash-1" }
+    ]
+  }));
+
+  assert.throws(
+    () => applyRenames(directory, [{ from: "b.jpg", to: "new.jpg" }]),
+    (error) => error instanceof RenameError && error.code === "ERECOVERED"
+  );
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "b.jpg"), "utf8"), "b");
+  assert.equal(existsSync(path.join(directory, "new.jpg")), false);
+  assert.equal(existsSync(path.join(directory, JOURNAL_NAME)), false);
+});
+
+test("preserves inconsistent recovery state and refuses to guess", () => {
+  const directory = directoryWith({ "a.jpg": "original", "one.jpg": "other" });
+  writeFileSync(path.join(directory, JOURNAL_NAME), JSON.stringify({
+    version: 1,
+    id: "crash",
+    steps: [{ from: "a.jpg", to: "one.jpg", staged: ".renamer-stage-crash-0" }]
+  }));
+
+  assert.throws(
+    () => applyRenames(directory, []),
+    (error) => error instanceof RenameError && error.code === "ERECOVERY" &&
+      error.details.some((line) => line.includes("expected one copy"))
+  );
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "original");
+  assert.equal(readFileSync(path.join(directory, "one.jpg"), "utf8"), "other");
+  assert.equal(existsSync(path.join(directory, JOURNAL_NAME)), true);
+});
+
+test("fails immediately when another live process owns the lock", () => {
+  const directory = directoryWith({ "a.jpg": "a" });
+  writeFileSync(path.join(directory, LOCK_NAME), JSON.stringify({ pid: process.pid }));
+  assert.throws(
+    () => applyRenames(directory, [{ from: "a.jpg", to: "b.jpg" }]),
+    (error) => error instanceof RenameError && error.code === "ELOCKED"
+  );
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+});

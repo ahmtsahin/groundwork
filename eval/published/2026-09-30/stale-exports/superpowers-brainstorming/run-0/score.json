@@ -1,0 +1,89 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 219807,
+    "tokens": {
+      "input": 361320,
+      "output": 8297,
+      "total": 369617
+    }
+  },
+  "interaction": {
+    "agentTurns": 4,
+    "userMessages": 3,
+    "nativeRounds": 0,
+    "humanInputs": 3,
+    "questionsAsked": 3,
+    "approvalGates": 1,
+    "decisionQuestions": 2
+  },
+  "questionQuality": {
+    "withConcreteOptions": 2,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 2,
+    "withSingleAxis": 1,
+    "recommendationAccepted": 0,
+    "optionRate": 1,
+    "recommendationRate": 0,
+    "evidenceRate": 1,
+    "axisPurityRate": 0.5,
+    "recommendationAccuracy": null
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "interface-shape",
+      "change-detection",
+      "failure-output"
+    ],
+    "resolvedFromRepository": [
+      "nightly-budget"
+    ],
+    "userVolunteered": [
+      "retry-policy"
+    ],
+    "missed": [
+      "snapshot-consistency",
+      "concurrent-change"
+    ],
+    "closureRate": 0.778,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 7,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session correctly separated fresh ad hoc exports from explicitly cached nightly runs and implemented the chosen failure and retry behavior without asking any forbidden repository-answerable questions. It was shallow on the depth tier: snapshot consistency and successful concurrent rewrites were never settled, and the final approval checkpoint substituted for further interrogation."
+}

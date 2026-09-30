@@ -1,0 +1,88 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 199878,
+    "tokens": {
+      "input": 317220,
+      "output": 8031,
+      "total": 325251
+    }
+  },
+  "interaction": {
+    "agentTurns": 5,
+    "userMessages": 4,
+    "nativeRounds": 0,
+    "humanInputs": 4,
+    "questionsAsked": 5,
+    "approvalGates": 1,
+    "decisionQuestions": 4
+  },
+  "questionQuality": {
+    "withConcreteOptions": 4,
+    "withRecommendation": 4,
+    "withRepositoryEvidence": 4,
+    "withSingleAxis": 3,
+    "recommendationAccepted": 3,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 0.75,
+    "recommendationAccuracy": 0.75
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "change-detection"
+    ],
+    "resolvedFromRepository": [
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output"
+    ],
+    "userVolunteered": [],
+    "missed": [
+      "retry-policy"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session clearly declared the bounded path, presented three genuinely different solution approaches, grounded every substantive question in repository evidence, and implemented the chosen `--fresh` contract with focused tests. It was not fully thorough at the depth tier because retry behavior during a sync race was never put to the user or otherwise normatively settled."
+}

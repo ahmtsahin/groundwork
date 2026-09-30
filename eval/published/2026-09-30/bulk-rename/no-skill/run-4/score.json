@@ -1,0 +1,86 @@
+{
+  "arm": "no-skill",
+  "label": "no skill (Codex only)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 0,
+    "wallClockMs": 58121,
+    "tokens": {
+      "input": 121310,
+      "output": 2251,
+      "total": 123561
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 0,
+    "humanInputs": 0,
+    "questionsAsked": 0,
+    "approvalGates": 0,
+    "decisionQuestions": 0
+  },
+  "questionQuality": {
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "optionRate": null,
+    "recommendationRate": null,
+    "evidenceRate": null,
+    "axisPurityRate": null,
+    "recommendationAccuracy": null
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 0,
+    "depthTotal": 5,
+    "depthRate": 0,
+    "asked": [],
+    "resolvedFromRepository": [
+      "collision-policy",
+      "atomicity"
+    ],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "case-insensitive-fs",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "closureRate": 0.25,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 2,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session directly addressed the reported collision-induced partial rename and added a focused regression test without asking forbidden questions. It was too narrow for a safe bulk-renamer: transient collisions, repeat runs, self-inclusion, case-insensitive paths, and complete failure reporting were left unexamined, and collision preflight alone does not guarantee rollback for failures during the apply loop."
+}

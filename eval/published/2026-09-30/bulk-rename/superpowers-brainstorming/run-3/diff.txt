@@ -1,0 +1,260 @@
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import {
+  applyRenames,
+  planRenames,
+  RenameCollisionError
+} from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+try {
+  applyRenames(directory, plan);
+
+  for (const step of plan) {
+    process.stdout.write(`${step.from} -> ${step.to}\n`);
+  }
+} catch (error) {
+  if (!(error instanceof RenameCollisionError)) {
+    throw error;
+  }
+
+  for (const collision of error.collisions) {
+    process.stderr.write(`collision: ${collision}\n`);
+  }
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { existsSync, renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export class RenameCollisionError extends Error {
+  constructor(collisions) {
+    super(`rename targets conflict: ${collisions.join(", ")}`);
+    this.name = "RenameCollisionError";
+    this.collisions = collisions;
+  }
+}
+
+export function applyRenames(directory, plan) {
+  const activeSteps = plan.filter((step) => step.from !== step.to);
+  const destinationCounts = new Map();
+
+  for (const step of activeSteps) {
+    destinationCounts.set(step.to, (destinationCounts.get(step.to) ?? 0) + 1);
+  }
+
+  const collisions = new Set();
+  for (const step of activeSteps) {
+    if (
+      destinationCounts.get(step.to) > 1 ||
+      existsSync(path.join(directory, step.to))
+    ) {
+      collisions.add(step.to);
+    }
+  }
+
+  if (collisions.size > 0) {
+    throw new RenameCollisionError([...collisions]);
+  }
+
+  for (const step of activeSteps) {
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import {
+  applyRenames,
+  planRenames,
+  RenameCollisionError
+} from "../src/rename.js";
+
+function temporaryDirectory() {
+  return mkdtempSync(path.join(tmpdir(), "renamer-test-"));
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("all collisions are reported before any file moves", () => {
+  const directory = temporaryDirectory();
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "taken-1.jpg"), "first occupant");
+  writeFileSync(path.join(directory, "taken-2.jpg"), "second occupant");
+
+  const plan = [
+    { from: "a.jpg", to: "taken-1.jpg" },
+    { from: "b.jpg", to: "taken-2.jpg" }
+  ];
+
+  assert.throws(
+    () => applyRenames(directory, plan),
+    (error) => {
+      assert.ok(error instanceof RenameCollisionError);
+      assert.deepEqual(error.collisions, ["taken-1.jpg", "taken-2.jpg"]);
+      return true;
+    }
+  );
+  assert.deepEqual(readdirSync(directory).sort(), [
+    "a.jpg",
+    "b.jpg",
+    "taken-1.jpg",
+    "taken-2.jpg"
+  ]);
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "b.jpg"), "utf8"), "b");
+});
+
+test("a destination occupied by another planned source is a collision", () => {
+  const directory = temporaryDirectory();
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "b.jpg" },
+      { from: "b.jpg", to: "c.jpg" }
+    ]),
+    (error) => {
+      assert.deepEqual(error.collisions, ["b.jpg"]);
+      return true;
+    }
+  );
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg"]);
+});
+
+test("duplicate destinations abort before any file moves", () => {
+  const directory = temporaryDirectory();
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "same.jpg" },
+      { from: "b.jpg", to: "same.jpg" }
+    ]),
+    (error) => {
+      assert.deepEqual(error.collisions, ["same.jpg"]);
+      return true;
+    }
+  );
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg"]);
+});
+
+test("same-path steps are harmless no-ops", () => {
+  const directory = temporaryDirectory();
+  writeFileSync(path.join(directory, "photo-001.jpg"), "photo");
+
+  applyRenames(directory, [
+    { from: "photo-001.jpg", to: "photo-001.jpg" }
+  ]);
+
+  assert.equal(
+    readFileSync(path.join(directory, "photo-001.jpg"), "utf8"),
+    "photo"
+  );
+});
+
+test("a collision-free plan renames every file", () => {
+  const directory = temporaryDirectory();
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+
+  applyRenames(directory, [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+
+  assert.deepEqual(readdirSync(directory).sort(), [
+    "photo-001.jpg",
+    "photo-002.jpg"
+  ]);
+});

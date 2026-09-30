@@ -1,0 +1,201 @@
+[
+  {
+    "receivedAt": 1790721639915,
+    "requestId": 0,
+    "threadId": "01a0ef52-636a-7821-9723-c53cc33161e6",
+    "turnId": "01a0ef52-6381-7fb1-b342-b908a562b096",
+    "itemId": "call_B1Cj3SBOQYcVHZcygoCm2xKo",
+    "leadIn": "I’m using the active settle workflow: I’ll first trace the export flow and its writers/tests, then bring only genuinely user-owned behavior choices back through the native question form before touching code.\n\nThis is a **bounded** change: the existing export/cache flow owns the behavior; no new API, schema, or subsystem is required.\n\nVerified facts:\n\n- `src/cache.js` gives every cached range a six-hour TTL (`DEFAULT_TTL_MS`), while `README.md` says upstream rewrites `data/orders.json` about every 15 minutes.\n- `src/exporter.js` returns the range cache without checking whether the source file changed.\n- `README.md` says the nightly job depends on caching to complete within ten minutes, but explicitly leaves ad-hoc freshness undecided.\n- `test/exporter.test.js` protects only the exact CSV column order; it has no cache freshness or recovery coverage.\n\n**Inference:** the stale reports come from time-only invalidation. Comparing the cache file with the source file can preserve reuse across the ~400 nightly calls while invalidating ranges after a sync.\n\n**Dependency map:** freshness policy determines invalidation; source-failure policy determines whether an invalidated cache remains a fallback; corrupt-cache behavior then shapes recovery tests.",
+    "questions": [
+      {
+        "id": "freshness",
+        "header": "Freshness",
+        "question": "When upstream data has changed, what should the next export show? A wrong choice either preserves stale ad-hoc reports or weakens the nightly performance guarantee. Evidence: `src/cache.js` uses a six-hour TTL; `README.md` says source updates arrive about every 15 minutes and nightly relies on cache speed.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Latest sync (Recommended)",
+            "description": "Invalidate cached ranges after the source changes; adds one cheap filesystem metadata check per invocation."
+          },
+          {
+            "label": "Six-hour cache",
+            "description": "Preserve current nightly-oriented behavior; ad-hoc exports can remain stale for up to six hours."
+          },
+          {
+            "label": "Separate modes",
+            "description": "Add a caller-selected fresh/nightly behavior; clearer control, but changes the CLI contract and nightly invocation."
+          }
+        ]
+      },
+      {
+        "id": "source_failure",
+        "header": "Bad source",
+        "question": "If a newly rewritten `data/orders.json` is unreadable or malformed but an older valid cache exists, what should users receive? A wrong choice can silently serve stale finance data or make exports unavailable. Evidence: `src/store.js` currently throws on unreadable or invalid JSON, while a still-valid cache in `src/exporter.js` can mask it.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Fail clearly (Recommended)",
+            "description": "Exit nonzero instead of silently exporting old rows; exports are unavailable until upstream is repaired."
+          },
+          {
+            "label": "Use stale cache",
+            "description": "Keep exports available from the last cached rows; consumers may not know the data is stale."
+          }
+        ]
+      },
+      {
+        "id": "cache_failure",
+        "header": "Bad cache",
+        "question": "If a cache file is malformed but the source is valid, should export recover or fail? A wrong choice trades resilience against surfacing local corruption. Evidence: `readCache` in `src/cache.js` currently lets JSON parse errors abort the command.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Rebuild cache (Recommended)",
+            "description": "Read the valid source and replace the broken cache; local cache corruption is automatically healed."
+          },
+          {
+            "label": "Fail clearly",
+            "description": "Expose cache corruption immediately; a valid report is blocked until the cache is removed manually."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "freshness",
+        "answer": "Latest sync (Recommended)"
+      },
+      {
+        "questionId": "source_failure",
+        "answer": "Fail clearly (Recommended)"
+      },
+      {
+        "questionId": "cache_failure",
+        "answer": "Rebuild cache (Recommended)"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1790721661520,
+    "requestId": 1,
+    "threadId": "01a0ef52-636a-7821-9723-c53cc33161e6",
+    "turnId": "01a0ef52-6381-7fb1-b342-b908a562b096",
+    "itemId": "call_VBf2Pg6ziSfbpXb9eGPQ1clM",
+    "leadIn": "The first round settles the core policy:\n\n- **Freshness — user:** invalidate cached ranges after the source changes.\n- **Malformed/unreadable source — user:** fail clearly; do not silently fall back to stale rows.\n- **Malformed cache — user:** rebuild it from valid source data.\n\nMore verified facts:\n\n- `loadOrders()` and cache I/O are synchronous (`src/store.js`, `src/cache.js`), but the upstream job can rewrite the source independently (`README.md`).\n- Cache files are written directly to their final path (`src/cache.js`), so overlapping reportkit processes targeting the same range can observe one another’s writes.\n- The repository contains no other source writer, cache reader, scheduler, or CLI mode; the external upstream/nightly jobs are described only in `README.md`.\n\n**Open tension:** “latest sync” still needs a precise boundary when the source changes during one export, and overlapping processes need an observable outcome.\n\n**Dependency map:** the mid-run rule determines whether an export retries; the overlap rule determines whether cache publication must be atomic. Both precede the final contract and tests.",
+    "questions": [
+      {
+        "id": "midrun_update",
+        "header": "Mid-run",
+        "question": "If upstream completes a valid newer rewrite while an export is already running, which snapshot should that export return? A wrong choice can violate the intended freshness boundary or add retry behavior. Evidence: `src/store.js` reads synchronously, while `README.md` identifies an independent upstream writer.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Restart newer (Recommended)",
+            "description": "Detect the change and retry so the completed export reflects the newest sync; a continuously changing source may eventually fail after a bounded retry."
+          },
+          {
+            "label": "Finish started",
+            "description": "Return the snapshot the export began reading; it may be one sync behind immediately after completion."
+          }
+        ]
+      },
+      {
+        "id": "overlap",
+        "header": "Overlap",
+        "question": "When two reportkit processes export the same range concurrently, what should users observe? A wrong choice can leave a corrupt shared cache or unnecessarily reject valid work. Evidence: `src/cache.js` currently writes both processes directly to the same final cache path.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Both succeed (Recommended)",
+            "description": "Publish cache files atomically so both exports complete; duplicate source work can occur on a cache miss."
+          },
+          {
+            "label": "Refuse overlap",
+            "description": "Allow only one same-range export at a time; callers must retry and locking adds operational cleanup concerns."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "midrun_update",
+        "answer": "Finish started"
+      },
+      {
+        "questionId": "overlap",
+        "answer": "Both succeed (Recommended)"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1790721683858,
+    "requestId": 2,
+    "threadId": "01a0ef52-636a-7821-9723-c53cc33161e6",
+    "turnId": "01a0ef52-6381-7fb1-b342-b908a562b096",
+    "itemId": "call_5shp09YQ5YMoG6xJyYvICHMJ",
+    "leadIn": "The overlap decisions are now closed:\n\n- **Mid-run source update — user:** finish from the snapshot the export started with; the next invocation sees the newer sync.\n- **Concurrent same-range exports — user:** both succeed; cache publication must not expose a half-written file.\n\nRepository evidence closes the remaining data-shape questions: filtering/mapping preserves empty, duplicate, and repeated rows (`src/store.js`, `src/exporter.js`); the CSV header is fixed and tested (`test/exporter.test.js`); and only reportkit reads `.reportkit-cache` in this repository. Old cache files can remain compatible because freshness can be determined from file timestamps without changing their JSON schema.\n\n**Open tension:** “fail clearly” does not yet specify the CLI-visible error shape. That choice controls whether errors remain Node stack traces or become a stable operator-facing message and exit status.\n\n**Dependency map:** this last failure-contract choice determines the CLI test; after it, I can present the complete contract for confirmation.",
+    "questions": [
+      {
+        "id": "error_shape",
+        "header": "Errors",
+        "question": "How should source/cache failures appear at the CLI? A wrong choice either exposes implementation stacks to operators or hides debugging detail. Evidence: `src/cli.js` has no error handling today, so thrown read/parse errors produce a Node stack and nonzero exit.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Concise stderr (Recommended)",
+            "description": "Print one reportkit-prefixed error and exit nonzero; stack detail is omitted from normal CLI output."
+          },
+          {
+            "label": "Node stack",
+            "description": "Keep full uncaught exception detail for debugging; operator output remains noisy and implementation-specific."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "error_shape",
+        "answer": "Concise stderr (Recommended)"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1790721695636,
+    "requestId": 3,
+    "threadId": "01a0ef52-636a-7821-9723-c53cc33161e6",
+    "turnId": "01a0ef52-6381-7fb1-b342-b908a562b096",
+    "itemId": "call_oJUKTLw0YFH1ItfsO1blVY00",
+    "leadIn": "All user-owned probes are closed:\n\n- Freshness: next invocation after a source rewrite uses the latest sync.\n- Invalid source: fail rather than serve a stale cache.\n- Invalid cache: rebuild from the valid source.\n- Mid-run rewrite: finish the snapshot already started; freshness applies on the next invocation.\n- Same-range overlap: both commands succeed without exposing partial cache content.\n- CLI failure: emit a concise `reportkit:` error on stderr and exit nonzero.\n\nResolved contract: reportkit will retain its existing `reportkit <from> <to>` interface and exact `id,placedAt,total,status` order. Cache entries remain reusable while both TTL-valid and no older than `data/orders.json`; cache publication becomes atomic. Existing cache JSON stays readable. Explicitly excluded are a new fresh/nightly flag, changes to source or CSV schemas, silent stale fallback, and changes to the external jobs. Focused tests will prove source-change invalidation, cache reuse, corrupt-cache recovery, invalid-source failure, overlap-safe publication, concise CLI errors, and stable columns; then `node --test` must pass.\n\n**Inference:** these rules resolve the symptom without sacrificing the nightly cache’s repeated-read benefit. Implementation and the decision record wait only on confirmation that this contract is complete.",
+    "questions": [
+      {
+        "id": "confirm_contract",
+        "header": "Confirm",
+        "question": "Is this resolved contract complete and correct? Confirming authorizes implementation; rejecting it returns us to the specific missing or wrong decision.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Implement (Recommended)",
+            "description": "Build and verify exactly this contract; excludes new CLI modes and schema changes."
+          },
+          {
+            "label": "Revise contract",
+            "description": "Pause implementation and provide the missing or incorrect behavior through the free-form response."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "confirm_contract",
+        "answer": "Implement (Recommended)"
+      }
+    ]
+  }
+]

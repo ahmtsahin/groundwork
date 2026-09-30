@@ -1,0 +1,84 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 329265,
+    "tokens": {
+      "input": 436188,
+      "output": 10728,
+      "total": 446916
+    }
+  },
+  "interaction": {
+    "agentTurns": 5,
+    "userMessages": 4,
+    "nativeRounds": 0,
+    "humanInputs": 4,
+    "questionsAsked": 10,
+    "approvalGates": 1,
+    "decisionQuestions": 9
+  },
+  "questionQuality": {
+    "withConcreteOptions": 5,
+    "withRecommendation": 9,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 6,
+    "recommendationAccepted": 8,
+    "optionRate": 0.556,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0.667,
+    "recommendationAccuracy": 0.889
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 2,
+    "depthTotal": 5,
+    "depthRate": 0.4,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "idempotency",
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.625,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 5,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly specified collision handling, rollback, and failure reporting, and the implementation visibly follows those choices. It over-questioned low-level failure details while missing idempotency, case-insensitive filesystems, and preview policy; moreover, the check-then-rename race can still overwrite a newly created target, so the absolute acceptance guarantees are not met."
+}

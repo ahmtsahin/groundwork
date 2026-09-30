@@ -1,0 +1,87 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 545962,
+    "tokens": {
+      "input": 777297,
+      "output": 18838,
+      "total": 796135
+    }
+  },
+  "interaction": {
+    "agentTurns": 7,
+    "userMessages": 6,
+    "nativeRounds": 0,
+    "humanInputs": 6,
+    "questionsAsked": 15,
+    "approvalGates": 1,
+    "decisionQuestions": 14
+  },
+  "questionQuality": {
+    "withConcreteOptions": 14,
+    "withRecommendation": 14,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 12,
+    "recommendationAccepted": 10,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0.857,
+    "recommendationAccuracy": 0.714
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 2,
+    "depthTotal": 5,
+    "depthRate": 0.4,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "idempotency",
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.5,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 4,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 5,
+    "distinctApproaches": 5,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session exhaustively negotiated transactional execution, crash recovery, locking, and diagnostics, and the implementation visibly reflects those choices. It over-expanded an expected bounded fix into an architectural journal-and-recovery system, used a final approval gate, and missed self-inclusion, repeat-run idempotency, case-only filesystem behavior, and preview policy."
+}

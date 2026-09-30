@@ -1,0 +1,434 @@
+ADDED src/args.js
+export function parseArgs(args) {
+  let nightly = false;
+  const positional = [];
+
+  for (const argument of args) {
+    if (argument === "--nightly") {
+      nightly = true;
+    } else if (argument.startsWith("-")) {
+      throw new Error(`unknown flag: ${argument}`);
+    } else {
+      positional.push(argument);
+    }
+  }
+
+  if (positional.length !== 2) {
+    throw new Error("expected exactly two date arguments");
+  }
+
+  return { from: positional[0], to: positional[1], nightly };
+}
+
+
+MODIFIED README.md
+--- before ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Not decided
+
+Whether ad hoc runs should see fresher data than the nightly batch does.
+
+--- after ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- `reportkit --nightly <from> <to>` opts into cached results generated within
+  the last 24 hours. The flag may appear anywhere in the argument list.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Freshness
+
+Ad hoc runs fingerprint a complete snapshot of `data/orders.json` and only
+reuse cached rows produced from that exact content. A source change is visible
+on the next run. Each export is generated from one complete source snapshot.
+
+Nightly runs prioritize predictable completion and may immediately reuse a
+cached result generated within the previous 24 hours.
+
+
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+export const NIGHTLY_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, options = {}) {
+  if (typeof options === "number") options = { ttlMs: options };
+  const {
+    ttlMs = DEFAULT_TTL_MS,
+    sourceFingerprint
+  } = options;
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+  if (sourceFingerprint !== undefined) {
+    if (payload.sourceFingerprint === undefined) return null;
+    if (
+      payload.sourceFingerprint !== undefined &&
+      payload.sourceFingerprint !== sourceFingerprint
+    ) return null;
+  }
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows, { sourceFingerprint } = {}) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), sourceFingerprint, rows }),
+    "utf8"
+  );
+}
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+import { parseArgs } from "./args.js";
+
+let options;
+
+try {
+  options = parseArgs(process.argv.slice(2));
+} catch (error) {
+  console.error(error.message);
+  console.error("usage: reportkit [--nightly] <from> <to>");
+  process.exit(1);
+}
+
+const { from, to, nightly } = options;
+process.stdout.write(toCsv(exportOrders(from, to, { nightly })));
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { createHash } from "node:crypto";
+
+import { NIGHTLY_TTL_MS, readCache, writeCache } from "./cache.js";
+import { loadOrdersSnapshot } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to, { nightly = false } = {}) {
+  const key = cacheKey(from, to);
+  if (nightly) {
+    const cached = readCache(key, { ttlMs: NIGHTLY_TTL_MS });
+    if (cached) return cached;
+  }
+
+  const { source, orders } = loadOrdersSnapshot();
+  const sourceFingerprint = createHash("sha256").update(source).digest("hex");
+
+  if (!nightly) {
+    const cached = readCache(key, {
+      ttlMs: Number.POSITIVE_INFINITY,
+      sourceFingerprint
+    });
+    if (cached) return cached;
+  }
+
+  const rows = orders
+    .filter((order) => order.placedAt >= from && order.placedAt <= to)
+    .map((order) => ({
+      id: order.id,
+      placedAt: order.placedAt,
+      total: order.total,
+      status: order.status
+    }));
+
+  writeCache(key, rows, { sourceFingerprint });
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function loadOrdersSnapshot() {
+  const source = readFileSync("data/orders.json", "utf8");
+  return { source, orders: JSON.parse(source) };
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { parseArgs } from "../src/args.js";
+import { cachePath } from "../src/cache.js";
+import { exportOrders, toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+function inTemporaryWorkspace(run) {
+  const originalDirectory = process.cwd();
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-"));
+  mkdirSync(path.join(directory, "data"));
+  process.chdir(directory);
+  try {
+    return run(directory);
+  } finally {
+    process.chdir(originalDirectory);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function writeOrders(orders) {
+  writeFileSync("data/orders.json", JSON.stringify(orders), "utf8");
+}
+
+test("ad hoc exports invalidate cached rows when source content changes", () => {
+  inTemporaryWorkspace(() => {
+    writeOrders([{ id: "old", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "old");
+
+    writeOrders([{ id: "new", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "new");
+  });
+});
+
+test("ad hoc exports ignore legacy cache entries without a source fingerprint", () => {
+  inTemporaryWorkspace(() => {
+    writeOrders([{ id: "fresh", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    mkdirSync(".reportkit-cache");
+    writeFileSync(
+      cachePath("orders-2026-01-01-2026-01-31"),
+      JSON.stringify({ writtenAt: Date.now(), rows: [{ id: "legacy" }] }),
+      "utf8"
+    );
+
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "fresh");
+  });
+});
+
+test("nightly exports may immediately reuse a cache entry after the source changes", () => {
+  inTemporaryWorkspace(() => {
+    writeOrders([{ id: "cached", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    exportOrders("2026-01-01", "2026-01-31");
+    writeOrders([{ id: "fresh", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+
+    assert.equal(
+      exportOrders("2026-01-01", "2026-01-31", { nightly: true })[0].id,
+      "cached"
+    );
+  });
+});
+
+test("nightly exports accept legacy cache entries within 24 hours", () => {
+  inTemporaryWorkspace(() => {
+    writeOrders([{ id: "fresh", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    mkdirSync(".reportkit-cache");
+    writeFileSync(
+      cachePath("orders-2026-01-01-2026-01-31"),
+      JSON.stringify({ writtenAt: Date.now(), rows: [{ id: "legacy" }] }),
+      "utf8"
+    );
+
+    assert.equal(
+      exportOrders("2026-01-01", "2026-01-31", { nightly: true })[0].id,
+      "legacy"
+    );
+  });
+});
+
+test("nightly exports reject cache entries older than 24 hours", () => {
+  inTemporaryWorkspace(() => {
+    writeOrders([{ id: "fresh", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    mkdirSync(".reportkit-cache");
+    const file = cachePath("orders-2026-01-01-2026-01-31");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        writtenAt: Date.now() - 24 * 60 * 60 * 1000 - 1,
+        rows: [{ id: "expired" }]
+      }),
+      "utf8"
+    );
+
+    assert.equal(
+      exportOrders("2026-01-01", "2026-01-31", { nightly: true })[0].id,
+      "fresh"
+    );
+    assert.notEqual(JSON.parse(readFileSync(file, "utf8")).rows[0].id, "expired");
+  });
+});
+
+test("parseArgs accepts --nightly anywhere and rejects unknown or extra arguments", () => {
+  assert.deepEqual(parseArgs(["--nightly", "2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    nightly: true
+  });
+  assert.deepEqual(parseArgs(["2026-01-01", "--nightly", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    nightly: true
+  });
+  assert.throws(() => parseArgs(["--other", "2026-01-01", "2026-01-31"]));
+  assert.throws(() => parseArgs(["2026-01-01", "2026-01-31", "extra"]));
+});

@@ -1,0 +1,87 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 331043,
+    "tokens": {
+      "input": 679992,
+      "output": 10252,
+      "total": 690244
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 13,
+    "approvalGates": 1,
+    "decisionQuestions": 12
+  },
+  "questionQuality": {
+    "withConcreteOptions": 12,
+    "withRecommendation": 12,
+    "withRepositoryEvidence": 3,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 10,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.25,
+    "axisPurityRate": 0.667,
+    "recommendationAccuracy": 0.833
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "failure-output"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly settled nearly all core and depth behavior, and the implementation visibly reflects those choices with snapshot hashing, immediate ad-hoc invalidation, and an explicit nightly policy. It never settled the CLI failure-output contract, and it added a final approval gate after claiming the design frontier was empty."
+}

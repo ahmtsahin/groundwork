@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first native question asked whether changed upstream data should produce the latest sync, retain the six-hour cache, or use separate modes; the user chose “Latest sync.”"
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "Choosing “Latest sync” settled that the next invocation after a completed source rewrite must not continue serving the six-hour-old entry."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "The agent cited README.md’s ten-minute nightly window and dependency on caching, then retained cache reuse without asking whether that documented constraint should change."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "“Separate modes” was offered as an explicit CLI-contract alternative, and the user instead chose global source-aware invalidation and later confirmed exclusion of new CLI modes."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "The mid-run question explicitly asked whether to restart for the newest rewrite or finish the snapshot with which the export began; the user chose “Finish started.”"
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The user was asked what an in-progress export should do when upstream rewrites the source and chose to finish its initial snapshot."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The agent selected filesystem timestamps as the invalidation mechanism in its inference and contract without asking the user to choose among metadata, hashing, or bypassing cache on the fresh path."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The source-failure and error-shape questions asked whether to fail or serve stale data and whether failures should be concise stderr or a Node stack; the user chose clear failure with concise stderr."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The mid-run options explicitly contrasted a bounded retry with finishing the started snapshot, and the user selected the no-retry behavior."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 7,
+    "approvalGates": 1,
+    "withSingleAxis": 3,
+    "recommendationAccepted": 5,
+    "withConcreteOptions": 6,
+    "withRecommendation": 6,
+    "withRepositoryEvidence": 6
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session declared the correct bounded path, grounded every substantive question in specific repository evidence, preserved the documented compatibility constraints, and visibly implemented the user’s selected behaviors. Its main gap is that it silently chose modification-time invalidation even though change detection was a material persona-owned decision; the final test also simulated sequential cache writers rather than truly overlapping processes.",
+  "rubricMaterialCount": 9
+}

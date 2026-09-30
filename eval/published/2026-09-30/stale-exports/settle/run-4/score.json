@@ -1,0 +1,87 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 282786,
+    "tokens": {
+      "input": 464693,
+      "output": 9797,
+      "total": 474490
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 4,
+    "humanInputs": 4,
+    "questionsAsked": 6,
+    "approvalGates": 1,
+    "decisionQuestions": 5
+  },
+  "questionQuality": {
+    "withConcreteOptions": 5,
+    "withRecommendation": 5,
+    "withRepositoryEvidence": 5,
+    "withSingleAxis": 4,
+    "recommendationAccepted": 3,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 0.8,
+    "recommendationAccuracy": 0.6
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "change-detection"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session clearly declared a bounded path, presented three genuinely distinct solution shapes first, and used repository-specific evidence for every substantive user question. It thoroughly settled most core and depth behavior and implemented those answers, but it never exposed the materially important cache change-detection choice and silently selected filesystem metadata."
+}

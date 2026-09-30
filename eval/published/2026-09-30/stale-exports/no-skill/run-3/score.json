@@ -1,0 +1,87 @@
+{
+  "arm": "no-skill",
+  "label": "no skill (Codex only)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 0,
+    "wallClockMs": 94881,
+    "tokens": {
+      "input": 204716,
+      "output": 3584,
+      "total": 208300
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 0,
+    "humanInputs": 0,
+    "questionsAsked": 0,
+    "approvalGates": 0,
+    "decisionQuestions": 0
+  },
+  "questionQuality": {
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "optionRate": null,
+    "recommendationRate": null,
+    "evidenceRate": null,
+    "axisPurityRate": null,
+    "recommendationAccuracy": null
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 1,
+    "coreTotal": 4,
+    "coreRate": 0.25,
+    "depthSettled": 0,
+    "depthTotal": 5,
+    "depthRate": 0,
+    "asked": [],
+    "resolvedFromRepository": [
+      "nightly-budget"
+    ],
+    "userVolunteered": [],
+    "missed": [
+      "freshness-scope",
+      "staleness-bound",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "closureRate": 0.111,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 1,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The implementation preserved the pinned CSV header and caching while making source changes invalidate entries before the six-hour TTL. However, the agent asked no questions and silently selected metadata-based global invalidation, leaving nearly every persona-dependent core and depth decision unsettled."
+}

@@ -1,0 +1,438 @@
+MODIFIED README.md
+--- before ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Known rough edge
+
+If a target name already exists the run stops partway with an EEXIST error, and
+the files renamed before that point stay renamed. This is what people complain
+about.
+
+--- after ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Collision handling
+
+Before changing any files, renamer checks every target name. If any target
+already exists, it reports all collisions and leaves the directory unchanged.
+It also checks each target again immediately before renaming and rolls back
+completed changes if a later rename fails.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { applyRenames, planRenames, RenameError } from "./rename.js";
+
+export function main(args, io = process) {
+  const [directory, pattern, replacement] = args;
+
+  if (!directory || !pattern || !replacement) {
+    io.stderr.write("usage: renamer <dir> <pattern> <replacement>\n");
+    return 1;
+  }
+
+  try {
+    const plan = planRenames(directory, pattern, replacement);
+    const changes = applyRenames(directory, plan);
+
+    for (const step of changes) {
+      io.stdout.write(`${step.from} -> ${step.to}\n`);
+    }
+    return 0;
+  } catch (error) {
+    if (error instanceof RenameError) {
+      for (const step of error.collisions) {
+        io.stderr.write(
+          `collision: ${step.from} -> ${step.to} (target exists)\n`
+        );
+      }
+
+      const original = error.cause ?? error;
+      io.stderr.write(`renamer: ${original.message}\n`);
+
+      for (const { step, error: rollbackError } of error.rollbackErrors) {
+        io.stderr.write(
+          `rollback failed: ${step.to} -> ${step.from}: ${rollbackError.message}\n`
+        );
+      }
+
+      if (error.rollbackErrors.length > 0) {
+        io.stderr.write("warning: the directory may be partially renamed\n");
+      } else {
+        io.stderr.write("nothing was changed\n");
+      }
+    } else {
+      io.stderr.write(`renamer: ${error.message}\n`);
+      io.stderr.write("nothing was changed\n");
+    }
+
+    return 1;
+  }
+}
+
+if (process.argv[1] &&
+    path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = main(process.argv.slice(2));
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { lstatSync, renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export class RenameError extends Error {
+  constructor(message, { cause, collisions = [], rollbackErrors = [] } = {}) {
+    super(message, { cause });
+    this.name = "RenameError";
+    this.collisions = collisions;
+    this.rollbackErrors = rollbackErrors;
+  }
+}
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+function isOccupied(file, stat) {
+  try {
+    stat(file);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+export function applyRenames(
+  directory,
+  plan,
+  operations = { lstatSync, renameSync }
+) {
+  const changes = plan.filter((step) => step.from !== step.to);
+  const targetPath = (step) => path.join(directory, step.to);
+  const collisions = changes.filter((step) =>
+    isOccupied(targetPath(step), operations.lstatSync)
+  );
+
+  if (collisions.length > 0) {
+    throw new RenameError("one or more target names already exist", {
+      collisions
+    });
+  }
+
+  const completed = [];
+
+  try {
+    for (const step of changes) {
+      if (isOccupied(targetPath(step), operations.lstatSync)) {
+        throw new RenameError("a target name appeared during the run", {
+          collisions: [step]
+        });
+      }
+
+      operations.renameSync(path.join(directory, step.from), targetPath(step));
+      completed.push(step);
+    }
+  } catch (cause) {
+    const rollbackErrors = [];
+
+    for (const step of completed.reverse()) {
+      try {
+        operations.renameSync(
+          path.join(directory, step.to),
+          path.join(directory, step.from)
+        );
+      } catch (error) {
+        rollbackErrors.push({ step, error });
+      }
+    }
+
+    if (cause instanceof RenameError) {
+      cause.rollbackErrors = rollbackErrors;
+      throw cause;
+    }
+
+    throw new RenameError("rename failed", { cause, rollbackErrors });
+  }
+
+  return changes;
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import {
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { main } from "../src/cli.js";
+import { applyRenames, planRenames, RenameError } from "../src/rename.js";
+
+function temporaryDirectory(t) {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "renamer-test-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+function createFiles(directory, names) {
+  for (const name of names) writeFileSync(path.join(directory, name), name);
+}
+
+function captureIo() {
+  let stdout = "";
+  let stderr = "";
+  return {
+    io: {
+      stdout: { write(value) { stdout += value; } },
+      stderr: { write(value) { stderr += value; } }
+    },
+    output: () => ({ stdout, stderr })
+  };
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("preflight reports every collision and changes nothing", (t) => {
+  const directory = temporaryDirectory(t);
+  createFiles(directory, ["a.jpg", "b.jpg", "photo-001.jpg", "photo-002.jpg"]);
+  const before = readdirSync(directory).sort();
+
+  assert.throws(
+    () => applyRenames(directory, [
+      { from: "a.jpg", to: "photo-001.jpg" },
+      { from: "b.jpg", to: "photo-002.jpg" }
+    ]),
+    (error) => {
+      assert(error instanceof RenameError);
+      assert.deepEqual(error.collisions, [
+        { from: "a.jpg", to: "photo-001.jpg" },
+        { from: "b.jpg", to: "photo-002.jpg" }
+      ]);
+      return true;
+    }
+  );
+
+  assert.deepEqual(readdirSync(directory).sort(), before);
+});
+
+test("exact no-ops are neither checked nor executed", () => {
+  let calls = 0;
+  const changes = applyRenames("unused", [{ from: "same", to: "same" }], {
+    lstatSync() { calls += 1; },
+    renameSync() { calls += 1; }
+  });
+
+  assert.deepEqual(changes, []);
+  assert.equal(calls, 0);
+});
+
+test("a runtime failure rolls completed renames back", (t) => {
+  const directory = temporaryDirectory(t);
+  createFiles(directory, ["a.jpg", "b.jpg"]);
+
+  assert.throws(() => applyRenames(directory, [
+    { from: "a.jpg", to: "one.jpg" },
+    { from: "b.jpg", to: "two.jpg" }
+  ], {
+    lstatSync,
+    renameSync(from, to) {
+      if (path.basename(from) === "b.jpg") throw new Error("disk failure");
+      renameSync(from, to);
+    }
+  }), /rename failed/);
+
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg"]);
+});
+
+test("a target appearing after preflight triggers rollback", (t) => {
+  const directory = temporaryDirectory(t);
+  createFiles(directory, ["a.jpg", "b.jpg"]);
+  let checks = 0;
+
+  assert.throws(() => applyRenames(directory, [
+    { from: "a.jpg", to: "one.jpg" },
+    { from: "b.jpg", to: "two.jpg" }
+  ], {
+    lstatSync(file) {
+      checks += 1;
+      if (checks === 4) return {};
+      return lstatSync(file);
+    },
+    renameSync
+  }), (error) => {
+    assert.deepEqual(error.collisions, [
+      { from: "b.jpg", to: "two.jpg" }
+    ]);
+    return true;
+  });
+
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg"]);
+});
+
+test("rollback errors are retained for reporting", (t) => {
+  const directory = temporaryDirectory(t);
+  createFiles(directory, ["a.jpg", "b.jpg"]);
+
+  assert.throws(() => applyRenames(directory, [
+    { from: "a.jpg", to: "one.jpg" },
+    { from: "b.jpg", to: "two.jpg" }
+  ], {
+    lstatSync,
+    renameSync(from, to) {
+      if (path.basename(from) === "b.jpg") throw new Error("disk failure");
+      if (path.basename(from) === "one.jpg") throw new Error("rollback failure");
+      renameSync(from, to);
+    }
+  }), (error) => {
+    assert.equal(error.cause.message, "disk failure");
+    assert.equal(error.rollbackErrors.length, 1);
+    assert.equal(error.rollbackErrors[0].error.message, "rollback failure");
+    return true;
+  });
+});
+
+test("CLI reports all collisions on stderr and keeps stdout empty", (t) => {
+  const directory = temporaryDirectory(t);
+  createFiles(directory, ["a.jpg", "b.jpg", "photo-001.jpg", "photo-002.jpg"]);
+  const before = readdirSync(directory).sort();
+  const capture = captureIo();
+  const status = main(
+    [directory, "a.jpg", "photo-001.jpg"],
+    capture.io
+  );
+  const output = capture.output();
+
+  assert.equal(status, 1);
+  assert.equal(output.stdout, "");
+  assert.match(output.stderr, /collision: a\.jpg -> photo-001\.jpg/);
+  assert.match(output.stderr, /nothing was changed/);
+  assert.deepEqual(readdirSync(directory).sort(), before);
+});
+
+test("CLI prints changes only after a successful run", (t) => {
+  const directory = temporaryDirectory(t);
+  createFiles(directory, ["a.jpg", "b.jpg"]);
+  const capture = captureIo();
+  const status = main(
+    [directory, "*.jpg", "photo-#.jpg"],
+    capture.io
+  );
+  const output = capture.output();
+
+  assert.equal(status, 0);
+  assert.equal(output.stderr, "");
+  assert.equal(output.stdout, "a.jpg -> photo-001.jpg\nb.jpg -> photo-002.jpg\n");
+  assert.deepEqual(readdirSync(directory).sort(), ["photo-001.jpg", "photo-002.jpg"]);
+});

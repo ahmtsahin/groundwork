@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "Q1 explicitly offered separate ad-hoc and nightly freshness behavior, and the user selected that option."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "Q4 asked whether the stated five-minute bound permitted reuse after a source change, and the user required immediate invalidation."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "Q5 asked how old nightly cached data may be, and the user chose up to 24 hours when needed for the deadline."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "Q3 asked how callers should declare freshness intent, and the user selected an explicit --nightly flag."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "Q6 asked which generation should win during an export, and the user chose one complete snapshot captured at the beginning."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "Q6 explicitly offered finishing the initial snapshot, retrying, or failing when the source changes mid-export."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "Q8 asked the user to choose content hashing, metadata comparison, or disabling ad-hoc caching, and the user chose hashing."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "No question or user statement settled whether invalid data should produce no CSV, stale rows with a warning, or an empty CSV."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "Q6 offered retry-until-stable as an alternative, and the user instead chose completing from the initial snapshot."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 13,
+    "approvalGates": 1,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 10,
+    "withConcreteOptions": 12,
+    "withRecommendation": 12,
+    "withRepositoryEvidence": 3
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly settled nearly all core and depth behavior, and the implementation visibly reflects those choices with snapshot hashing, immediate ad-hoc invalidation, and an explicit nightly policy. It never settled the CLI failure-output contract, and it added a final approval gate after claiming the design frontier was empty.",
+  "rubricMaterialCount": 9
+}

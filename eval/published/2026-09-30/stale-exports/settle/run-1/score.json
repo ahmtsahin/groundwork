@@ -1,0 +1,87 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 363678,
+    "tokens": {
+      "input": 533611,
+      "output": 12004,
+      "total": 545615
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 5,
+    "humanInputs": 5,
+    "questionsAsked": 8,
+    "approvalGates": 1,
+    "decisionQuestions": 7
+  },
+  "questionQuality": {
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 6,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 3,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.857,
+    "axisPurityRate": 0.714,
+    "recommendationAccuracy": 0.429
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 5,
+    "depthTotal": 5,
+    "depthRate": 1,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "interface-shape",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [
+      "nightly-budget",
+      "snapshot-consistency"
+    ],
+    "userVolunteered": [],
+    "missed": [],
+    "closureRate": 1,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 9,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session declared the expected bounded path before questioning, presented three genuinely distinct top-level approaches first, and then settled the relevant interface, cache, concurrency, retry, and failure behavior with repository-specific evidence. It was thorough and the implementation visibly honored every settled decision, though the final approval checkpoint was an unnecessary gate and the retry-budget options varied two parameters at once."
+}

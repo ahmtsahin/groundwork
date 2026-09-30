@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 2,
+    "distinctApproaches": 2,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The agent asked what should happen when any planned destination exists, and the user chose “Reject the whole run before anything changes, and report all conflicts.”"
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The agent asked both whether conflicts reject the entire run and whether unexpected failures trigger rollback; the user required rejection before changes and attempted rollback."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "The agent explicitly asked how to handle `photo-001.jpg → photo-001.jpg`, and the user chose a successful no-op reported as unchanged."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The agent asked how to handle destinations that are also sources, and the user chose staging for valid chains and swaps."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The no-op question explicitly connected already-correct names to accidental repeated runs, and the user chose unchanged no-ops."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question or repository resolution addressed case-only renames or filesystem case sensitivity."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The user was asked about conflict and rollback reporting and required all conflicts plus exact moved/not-moved details when rollback is incomplete."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session never asked or explicitly settled whether preview or confirmation belongs in the fix or may carry its safety guarantee."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 13,
+    "approvalGates": 1,
+    "withSingleAxis": 10,
+    "recommendationAccepted": 11,
+    "withConcreteOptions": 12,
+    "withRecommendation": 12,
+    "withRepositoryEvidence": 9
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session was unusually thorough on transaction staging, rollback, locking, durable recovery, and exact diagnostics, and the implementation visibly reflects those choices. It over-expanded a bounded collision fix into an architectural journal design, missed case-insensitive filesystem semantics and preview policy, and its admitted crash window means it does not literally ensure that every incomplete run immediately leaves all files unchanged.",
+  "rubricMaterialCount": 8
+}

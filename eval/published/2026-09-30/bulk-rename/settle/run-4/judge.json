@@ -1,0 +1,79 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Native call 1 asked whether an existing target should abort the batch or be skipped, and the user chose “Abort batch.”"
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Native calls 1 and 2 asked whether collisions and apply-time failures should leave no changes or partial changes, and the user chose abort plus rollback."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The user was never asked whether files already matching the target naming scheme should belong to the rename set, and the repository evidence only established that this can happen."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The “Occupied” question explicitly asked whether a destination owned by another source in the same plan should be allowed, and the user chose safe staging."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "The transcript notes that repeated runs are common but never asks or establishes from the repository what the second identical run should do."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question or repository resolution addressed case-only renames or filesystem case sensitivity."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The user chose empty stdout on rejection, all validation conflicts on stderr, leftover-path reporting after failed rollback, and the implementation returns a failing status."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The user chose when mapping output is emitted, but was never asked whether preview or confirmation belongs in the fix or whether safety may depend on it."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 9,
+    "approvalGates": 1,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 8,
+    "withConcreteOptions": 8,
+    "withRecommendation": 8,
+    "withRepositoryEvidence": 8
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session declared the bounded path, grounded every substantive question in named repository evidence, and implemented the collision, staging, rollback, and reporting choices. It missed self-inclusion, true second-run semantics, and case-insensitive filesystem behavior; moreover, rollback is only best-effort and rename-after-preflight can overwrite a concurrently created destination on filesystems where rename replaces targets, so the two absolute safety requirements are not fully met.",
+  "rubricMaterialCount": 8
+}

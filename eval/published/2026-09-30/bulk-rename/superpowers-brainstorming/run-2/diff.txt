@@ -1,0 +1,504 @@
+ADDED docs/superpowers/plans/2026-09-30-crash-safe-renames-implementation-plan.md
+# Crash-Safe Renames Implementation Plan
+
+## Objective
+
+Implement the approved crash-safe rename transaction design in
+`docs/superpowers/specs/2026-09-30-crash-safe-renames-design.md`. The result must
+never overwrite a path, must roll caught failures back, must recover an
+interrupted transaction before accepting new work, and must leave the directory
+unchanged when recovery inspection finds any conflict.
+
+The repository remains dependency-free, uses ES modules and Node built-ins, and
+runs tests with `node --test`.
+
+## Proposed Module Boundaries
+
+- `src/match.js`: input matching and exclusion of reserved internal names.
+- `src/rename.js`: public planning, validation, recovery-first orchestration,
+  and result/error types used by the CLI.
+- `src/transaction.js`: journal publication, filesystem identity inspection,
+  durable no-overwrite transitions, rollback, and recovery.
+- `src/cli.js`: argument handling and stdout/stderr/exit-status presentation.
+- `test/rename.test.js`: planning and high-level rename behavior.
+- `test/transaction.test.js`: transaction state-machine and injected-failure
+  tests.
+- `test/cli.test.js`: child-process CLI behavior and crash-recovery coverage.
+
+Filesystem operations in `transaction.js` should be accepted through a small
+injected adapter. Production uses `node:fs`; tests wrap the adapter to fail at
+specific link, sync, and unlink calls without changing production behavior.
+
+## Task 1: Make Planning Idempotent
+
+### Tests first
+
+Extend `test/rename.test.js` with temporary-directory tests asserting:
+
+1. `photo-001.jpg`, `photo-999.jpg`, and `photo-1000.jpg` are excluded for the
+   replacement `photo-#.jpg`.
+2. Similar but non-output names remain eligible.
+3. Replacement punctuation is treated literally when building the completed
+   output matcher.
+4. Only the first `#` is substituted, preserving current semantics.
+5. Files beginning with the reserved `.renamer-` prefix are never matched.
+6. A completed second run produces an empty plan.
+
+Run `node --test test/rename.test.js` and confirm the new tests fail for the
+expected reasons.
+
+### Implementation
+
+Add a helper in `src/rename.js` that converts the replacement into an anchored
+regular expression: escape the literal text around the first `#` and use
+`[0-9]{3,}` for its generated portion. Update planning to remove completed
+outputs before assigning sequence numbers. Update `src/match.js` to exclude
+reserved `.renamer-` names before returning matches.
+
+Run `node --test test/rename.test.js`, then `npm test`.
+
+## Task 2: Add Complete Read-Only Plan Validation
+
+### Tests first
+
+Add tests for a new `validatePlan(directory, plan)` API:
+
+1. It returns no conflicts for an unused set of destinations.
+2. It returns every occupied destination, not only the first.
+3. It detects duplicate destinations within the plan.
+4. It rejects unsafe reserved source, destination, or staging namespace use.
+5. Calling it never changes directory entries or contents.
+
+Conflict records should contain a stable code, exact path, and human-readable
+reason so the CLI does not parse exception text.
+
+### Implementation
+
+Implement validation in `src/rename.js` using `lstatSync`-style existence
+checks that do not follow an unexpected symlink. Keep plan validation separate
+from execution. Introduce a `PlanConflictError` that holds the complete ordered
+conflict list.
+
+Run the focused test file and then `npm test`.
+
+## Task 3: Implement and Verify No-Overwrite Filesystem Primitives
+
+### Tests first
+
+Create `test/transaction.test.js` for low-level primitives:
+
+1. `readIdentity` records device and inode values losslessly.
+2. `sameIdentity` accepts hard links to the same file and rejects different
+   files.
+3. `linkNoReplace` fails when the destination exists and preserves both files.
+4. `moveNoReplace` links, syncs, unlinks, and syncs in the required order.
+5. A failure before unlink leaves the old name present.
+6. A failure after unlink leaves at least the new transaction-owned link.
+7. Required hard-link or durability capability failures are reported before a
+   batch starts moving user files.
+
+The adapter spy must record operation order without relying on platform error
+message strings.
+
+### Implementation
+
+Create `src/transaction.js` with:
+
+- `createFsAdapter()` for production filesystem calls;
+- `readIdentity(path, fsAdapter)`;
+- `sameIdentity(expected, actual)`;
+- `assertTransactionCapabilities(directory, fsAdapter)`; and
+- `moveNoReplace(from, to, fsAdapter)`.
+
+Use hard-link creation as the exclusive destination operation. Flush directory
+metadata after link and unlink operations. The capability probe must use only
+reserved, uniquely named probe paths and remove them before returning. If Node
+or the filesystem cannot provide the required durability primitive, fail
+closed before publishing a journal or moving inputs.
+
+Run `node --test test/transaction.test.js`, followed by `npm test`.
+
+## Task 4: Publish the Journal Atomically
+
+### Tests first
+
+Add journal tests asserting:
+
+1. The serialized journal includes its version, transaction ID, and every
+   original/staging/destination/identity tuple.
+2. Numeric identity fields round-trip as decimal strings.
+3. The complete temporary journal is flushed before canonical publication.
+4. Canonical publication uses a hard link and cannot replace an existing
+   journal.
+5. Two publication attempts produce exactly one winner.
+6. A losing publisher removes only its own temporary journal.
+7. Failure before canonical publication cannot authorize file movement.
+
+### Implementation
+
+Add journal constants, strict serialization/parsing, schema validation, and
+`publishJournal(directory, entries, fsAdapter)` to `src/transaction.js`.
+Generate staging and temporary journal names from a cryptographically random
+transaction ID using `node:crypto`. Reject path separators, duplicate recorded
+paths, unsupported journal versions, and malformed identities while parsing.
+
+Write the temporary journal with exclusive creation, flush it, link it to
+`.renamer-transaction.json`, and flush the directory. Clean up only the current
+process's temporary file. Do not remove or replace an existing canonical
+journal.
+
+Run the focused tests and then `npm test`.
+
+## Task 5: Build Read-Only Recovery Inspection
+
+### Tests first
+
+Create table-driven tests for `inspectRecovery` covering each entry state:
+
+- source only;
+- staging only;
+- destination only;
+- source plus staging;
+- source plus destination;
+- staging plus destination; and
+- all three paths linked to the recorded identity.
+
+Add conflict cases for an unexpected source occupant, unexpected staging or
+destination occupant, changed identity, missing file data, malformed journal,
+and ambiguous cross-entry identity/path ownership. A multi-conflict test must
+prove all exact conflicts are returned. Snapshot the directory before and
+after every inspection and assert no mutation.
+
+### Implementation
+
+Implement strict `loadJournal` and `inspectRecovery` functions. Inspection must
+use `lstat` plus identity checks, classify every recorded location, and return
+either a complete recovery recipe or an ordered list of structured conflicts.
+It must not call link, unlink, rename, write, or truncate operations.
+
+Malformed or unsupported canonical journals block new work and require manual
+intervention; they are never deleted automatically.
+
+Run the focused tests and then `npm test`.
+
+## Task 6: Implement Idempotent Rollback and Recovery
+
+### Tests first
+
+For every recoverable state from Task 5, assert that recovery restores exactly
+the original names, removes verified transaction-owned extra links, and then
+removes the journal. Add fault injection after each link, sync, unlink, and
+journal-removal operation; rerunning recovery must finish safely.
+
+Add a conflict suite that records names, contents, and identities before
+recovery. When one or several conflicts exist, assert:
+
+- every conflict is returned;
+- no recovery operation starts;
+- the directory snapshot is unchanged; and
+- the canonical journal remains.
+
+### Implementation
+
+Implement `recoverTransaction(directory, fsAdapter)` as two explicit phases:
+
+1. Load and completely inspect the transaction.
+2. Only with a conflict-free recovery recipe, restore each original through
+   `moveNoReplace`/verified-link cleanup.
+
+Before each destructive cleanup, re-read identities to guard against changes
+since inspection. If the state changes, stop without removing the unexpected
+path and leave the journal for manual intervention. Remove and sync the journal
+only after all originals and cleanup invariants are verified.
+
+Run the focused tests and then `npm test`.
+
+## Task 7: Execute New Transactions With Automatic Rollback
+
+### Tests first
+
+Add integration tests for:
+
+1. A successful multi-file batch.
+2. All sources staged before any destination is created.
+3. Failure during each staging and destination transition.
+4. Immediate rollback after caught failure.
+5. A rollback failure leaving the journal and a recoverable state.
+6. A simulated crash at every operation boundary followed by successful
+   next-run recovery.
+7. A crash after destination metadata is flushed but before journal removal,
+   which rolls the batch back on the next invocation.
+8. Successful journal removal as the commit boundary.
+
+### Implementation
+
+Replace the current loop in `applyRenames` with transaction orchestration:
+
+1. Assert filesystem capabilities.
+2. Validate and collect source identities.
+3. Publish the full journal.
+4. Stage every source with no-overwrite transitions.
+5. Move each staging link to its destination with no-overwrite transitions.
+6. Verify all destinations and flush directory metadata.
+7. Remove the journal and flush the directory to commit.
+
+On any caught execution error, run the shared recovery routine. Return or throw
+a structured operational error that includes the original failure and whether
+rollback completed. Never discard an unresolved journal.
+
+Run the focused tests and then `npm test`.
+
+## Task 8: Enforce Recovery-First CLI Orchestration
+
+### Tests first
+
+Create `test/cli.test.js` using `spawnSync(process.execPath, ...)` and temporary
+directories. Assert:
+
+1. Recovery runs and is reported before a new plan is constructed.
+2. Successful recovery allows the requested new work to continue.
+3. Recovery conflicts list every exact path and reason on stderr, return a
+   nonzero status, and prevent plan output and new work.
+4. Planning clashes list every clash on stderr and cause zero mutations.
+5. A clean no-op rerun exits zero with no rename lines.
+6. Successful moves and recovery actions go to stdout.
+7. Operational diagnostics go to stderr.
+8. An active journal claimed by another process blocks the invocation.
+
+### Implementation
+
+Update `src/cli.js` to use a single `runRename` orchestration API from
+`src/rename.js`. Catch only known structured errors for formatting; unexpected
+errors still produce a diagnostic and nonzero exit. Set `process.exitCode`
+instead of exiting in the middle of cleanup.
+
+Do not print the proposed plan until recovery and validation have succeeded.
+Format every conflict on its own line with its exact path.
+
+Run `node --test test/cli.test.js`, followed by `npm test`.
+
+## Task 9: Documentation and Final Verification
+
+Update `README.md` to remove the known rough edge and document:
+
+- all-or-nothing caught-error behavior;
+- automatic next-run recovery after interruption;
+- the temporary visibility of an interrupted transaction;
+- no-overwrite conflict handling and manual intervention;
+- idempotent reruns;
+- the reserved `.renamer-` namespace; and
+- failure on filesystems where required hard-link or durability operations are
+  unavailable.
+
+Run the complete verification sequence:
+
+```powershell
+npm test
+node src/cli.js fixtures "*.jpg" "photo-#.jpg"
+node src/cli.js fixtures "*.jpg" "photo-#.jpg"
+```
+
+The manual smoke test must use a copied temporary fixture directory rather than
+mutating the repository fixtures. Confirm the first invocation produces the
+expected names and the second is a clean no-op.
+
+Review the final diff for accidental dependencies, overwrite-capable rename
+calls, filesystem mutation during conflict inspection, incomplete error
+reporting, and unrelated changes.
+
+## Commit Sequence
+
+If Git metadata becomes available, keep commits reviewable in this order:
+
+1. `test: specify idempotent rename planning`
+2. `feat: validate complete rename plans`
+3. `feat: add durable no-overwrite file transitions`
+4. `feat: publish rename transaction journals`
+5. `feat: inspect and recover interrupted transactions`
+6. `feat: execute crash-safe rename transactions`
+7. `feat: enforce recovery-first CLI behavior`
+8. `docs: describe crash-safe rename recovery`
+
+No commit should be attempted in the current workspace unless repository
+metadata is restored; the directory presently is not recognized as a Git
+working tree.
+
+
+ADDED docs/superpowers/specs/2026-09-30-crash-safe-renames-design.md
+# Crash-Safe, No-Overwrite Bulk Renames
+
+## Purpose
+
+`renamer` must apply a batch as one recoverable transaction. A caught error must
+roll the batch back, and a killed process or machine failure must leave enough
+durable state for the next invocation to restore the original names before it
+accepts new work. Neither normal execution nor recovery may overwrite a file.
+
+The directory can temporarily show an incomplete transaction after a crash.
+The next invocation must recover it to the original state first and clearly
+report the recovery. If recovery encounters any conflict, it must make no
+further changes, report every exact conflict, exit unsuccessfully, and require
+manual intervention.
+
+## User-Visible Contract
+
+An invocation performs these phases in order:
+
+1. Detect and recover an existing transaction journal.
+2. Refuse new work if recovery is unsafe or incomplete.
+3. Plan the requested rename, excluding already completed output names.
+4. Validate the entire plan and report every clash before changing files.
+5. Execute the plan as a durable transaction.
+
+Recovery actions and successful planned moves are written to stdout. Clashes,
+recovery conflicts, and operational diagnostics are written to stderr. A
+successful rename or clean no-op exits zero. A clash, unresolved recovery, or
+operational failure exits nonzero.
+
+A completed command is idempotent. For example, `photo-#.jpg` treats names
+consisting of the literal prefix and suffix around `#`, with at least three
+decimal digits in between, as completed outputs. Those files are excluded from
+subsequent plans. A second identical run therefore does not renumber them.
+
+## Components
+
+### Planning
+
+Planning keeps the existing lexical source ordering and numbering from one.
+The first `#` in the replacement is the numeric placeholder, matching the
+current replacement behavior. The generated number is padded to at least three
+digits. Reserved `.renamer-` journal and staging names are never eligible input
+files, even when the user's pattern would otherwise match them.
+
+Before execution, validation collects all conflicts, including:
+
+- an existing destination that is not the same recorded source file;
+- duplicate destinations inside the plan;
+- source, staging, or journal paths that cannot be used safely; and
+- an already active transaction claimed by another invocation.
+
+Validation does not mutate the directory. Any conflict prevents journal
+publication and file movement.
+
+### Transaction Journal
+
+The canonical journal is `.renamer-transaction.json` in the target directory.
+It contains a format version, transaction identifier, and one entry per file.
+Each entry records its original name, unique staging name, destination name,
+and original filesystem identity. Numeric identity fields that cannot be
+represented safely as JSON numbers are encoded as decimal strings.
+
+The complete journal is first written to a uniquely named temporary file. The
+file is flushed before publication. Publication hard-links the temporary file
+to the canonical journal name, providing an atomic no-clobber claim. The
+directory metadata is then flushed. File movement cannot start before this
+completes. A competing invocation that loses the claim removes only its own
+unpublished temporary journal and exits without touching user files.
+
+An unpublished temporary journal never authorizes recovery or file movement.
+It can be reported as an orphan, but the canonical journal is the sole source
+of transaction authority.
+
+The canonical journal remains unchanged and authoritative throughout execution.
+It is not removed until all intended destination entries and directory metadata
+have been durably flushed. Journal removal is the commit boundary: if a crash
+occurs before that removal is durable, the next invocation rolls the batch back.
+
+### No-Overwrite File Transition
+
+All source, staging, destination, and recovery moves stay within the target
+directory and filesystem. A move is implemented as:
+
+1. Create a hard link at the new name. Exclusive link creation fails if the
+   name is occupied.
+2. Flush directory metadata.
+3. Remove the old name.
+4. Flush directory metadata again.
+
+This preserves the underlying regular file, avoids copy-time disk expansion,
+and never uses rename behavior that can replace a destination on some
+platforms. If the filesystem cannot provide the required hard-link and
+durability operations, execution fails before user-file movement or rolls back
+through the normal transaction mechanism.
+
+The engine stages every source under its recorded unique name before creating
+final destinations. If any staging or destination transition fails, it stops
+forward execution and invokes rollback.
+
+## Recovery and Rollback
+
+Rollback after a caught error and recovery on a later invocation use the same
+algorithm. The algorithm is repeatable so another interruption during recovery
+can be handled by the next invocation.
+
+Before changing anything, recovery scans the complete transaction read-only.
+For each journal entry, the original data may be found at the source, staging,
+or destination name, or briefly at more than one of those names when a process
+stopped between link creation and old-link removal. Filesystem identity is used
+to verify that every such path belongs to the recorded original file.
+
+The complete transaction is recoverable only when:
+
+- each original file exists at one or more of its recorded paths;
+- every occupied recorded path has the expected identity;
+- an occupied original source is the original file itself; and
+- every extra link can be unambiguously attributed to that transaction entry.
+
+Missing data, a changed identity, an unexpected occupant at any recorded path,
+or any ambiguous state is a recovery conflict. Recovery collects every conflict
+during the read-only scan. If at least one exists, it changes nothing further,
+prints every conflicting path and reason, leaves the journal in place, and
+requires manual intervention.
+
+When the complete scan succeeds, recovery recreates each original source name
+with the no-overwrite link operation and removes only verified transaction-owned
+staging or destination links. An interruption can leave two verified links to
+the same file; the next recovery safely recognizes that state. The journal is
+removed and the directory flushed only after all original names are restored
+and all transaction-owned extra links are removed.
+
+Recovery always rolls a journaled batch back to its original names. New rename
+planning never begins while an unresolved canonical journal exists.
+
+## Failure and Concurrency Semantics
+
+The design protects against expected filesystem errors, process termination,
+machine failure, and concurrent `renamer` invocations. It does not silently
+resolve interference by unrelated processes. Such interference becomes an
+explicit conflict and blocks recovery rather than risking data loss.
+
+Immediate rollback failure is reported with the failed operation. Its journal
+remains authoritative so a future invocation can retry recovery. If that retry
+finds an unexpected recreated source or any other conflicting path, it performs
+no recovery mutations and requires manual intervention.
+
+## Testing
+
+Tests use isolated temporary directories and Node's built-in test runner. They
+cover:
+
+- successful multi-file renames;
+- a completed command followed by a clean no-op rerun;
+- multiple planning clashes reported together with no mutation;
+- duplicate planned destinations;
+- injected failure at each link, flush, and unlink transition;
+- immediate rollback and rollback interrupted at every intermediate state;
+- next-run recovery from every staged and partially committed state;
+- repeated recovery after interruption;
+- unexpected occupants, missing data, and changed identities producing a
+  complete conflict report with zero recovery mutations;
+- two processes attempting to publish a journal concurrently;
+- orphan unpublished journals;
+- unsupported hard-link or durability operations failing safely; and
+- CLI stdout, stderr, and exit status behavior.
+
+The tests compare directory entries and file contents before and after failed
+operations. Conflict tests snapshot the directory before recovery and assert
+that it remains byte-for-byte and name-for-name unchanged.
+
+## Scope
+
+The feature remains limited to regular files in one directory. It adds a
+persistent transaction journal and automatic recovery, superseding the prior
+decision not to keep rename state. It does not add a general undo command,
+recursive traversal, dependency packages, or automatic conflict resolution.

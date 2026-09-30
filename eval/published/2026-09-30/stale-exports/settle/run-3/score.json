@@ -1,0 +1,87 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 300543,
+    "tokens": {
+      "input": 489630,
+      "output": 10327,
+      "total": 499957
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 4,
+    "humanInputs": 4,
+    "questionsAsked": 5,
+    "approvalGates": 1,
+    "decisionQuestions": 4
+  },
+  "questionQuality": {
+    "withConcreteOptions": 4,
+    "withRecommendation": 4,
+    "withRepositoryEvidence": 4,
+    "withSingleAxis": 2,
+    "recommendationAccepted": 3,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 0.5,
+    "recommendationAccuracy": 0.75
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "change-detection"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session declared a bounded path before questioning, used repository-specific evidence, and obtained clear choices for nearly every behavioral policy. It did not ask the material change-detection question and silently chose stat-derived identity; the final test also changes file size, so it does not exercise the rubric’s same-size, preserved-mtime risk."
+}

@@ -1,0 +1,92 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question asked the user to choose among changing cache reuse globally, shortening the global TTL, or adding separate fresh and cached modes; the user chose 1C."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "user_volunteered",
+      "justification": "The user volunteered, “Fresh means within five minutes; more than fifteen is not acceptable,” although the agent had not asked for a numerical bound."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first question explicitly contrasted policies that could risk nightly runtime with option 1C, which kept caching for nightly runs, and the user selected it."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "Turn 2 asked whether fresh mode should use a leading flag, trailing flag, or environment variable; the user chose leading `--fresh`."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "Turn 3 asked whether to finish from the successfully read snapshot or detect a change and restart; the user chose the consistent successfully read snapshot."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "Turn 3 explicitly asked what to do if a valid newer `orders.json` is installed after reading begins; the user chose to finish the initial successful read."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "Turn 2 asked whether fresh mode should bypass cached rows entirely or use a five-minute cache; the user selected bypassing the cache, eliminating stale-entry detection on the fresh path."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "Turn 2 offered fail with no CSV, retry then fail with no CSV, or cached fallback with a warning; the user selected retry then loud failure with no CSV."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The user chose two retries without hanging, then selected 100 ms between attempts in Turn 3."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 9,
+    "approvalGates": 1,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 6,
+    "withConcreteOptions": 8,
+    "withRecommendation": 8,
+    "withRepositoryEvidence": 5
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [
+      "staleness-bound"
+    ],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session declared the bounded path before questioning, presented genuinely different solution approaches first, and thoroughly settled the core and depth behaviors without asking forbidden repository questions. The implementation visibly honors nearly all choices, but it does not enforce or validate the user’s five-minute freshness bound; bypassing a six-hour cache cannot guarantee that the roughly fifteen-minute upstream source is no more than five minutes old.",
+  "rubricMaterialCount": 9
+}

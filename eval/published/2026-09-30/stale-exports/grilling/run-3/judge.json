@@ -1,0 +1,91 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "Q3 asked whether ad hoc should be fresh by default while nightly uses `--batch`, the reverse via `--fresh`, or environment-based selection."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "Q2 asked about permitted staleness, and the user specified five minutes preferred with fifteen minutes as the hard limit."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "Q2 asked which priority wins when freshness increases latency, and the user explicitly allowed nightly caching to preserve its completion window."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "Q3 offered `--batch`, `--fresh`, and environment-variable interfaces; the user selected `--batch`."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "Q1 asked what moment an export represents, and the user chose one snapshot from export start."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "Q11 asked how to handle source rewrites during reads, and Q13 clarified that the first stable matching pair defines the snapshot."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "Q4 asked whether freshness should use source age, cache age, or both; the user's free-text answer instead required bypassing cache for ad hoc runs."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "Q5 and Q14 asked about fallback and its output semantics; the user required loud failure with no file when no trusted fallback exists and stderr warning when fallback succeeds."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "Q11 proposed bounded double-read retries, and the user selected identical checksums with at most three attempts."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 15,
+    "approvalGates": 1,
+    "withSingleAxis": 7,
+    "recommendationAccepted": 12,
+    "withConcreteOptions": 14,
+    "withRecommendation": 14,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly elicited every core and depth decision, and the resulting implementation visibly reflects all settled choices. It did not declare the expected bounded sizing before questioning, presented no whole-solution approaches, and ended with an unnecessary approval gate. Although several prompts referenced repository facts generally, none cited a specific required evidence anchor such as a path, test, or named constant.",
+  "rubricMaterialCount": 9
+}

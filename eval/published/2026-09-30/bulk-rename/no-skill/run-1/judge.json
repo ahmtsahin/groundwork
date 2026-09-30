@@ -1,0 +1,80 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "resolved_from_repository",
+      "justification": "README.md identifies an existing-target EEXIST failure as the relevant case, and the implementation preserves refusal while moving it into preflight."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "resolved_from_repository",
+      "justification": "README.md explicitly identifies partial application as the complaint, and the agent added preflight checks before the rename loop."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The transcript and changes never decide whether files already matching the replacement scheme belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "missed",
+      "justification": "The implementation silently rejects any currently occupied target even when that target is another source scheduled to move later."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "Although README.md records frequent accidental double runs, the agent neither discusses nor handles second-run behavior."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The path comparisons and destination set use ordinary case-sensitive string equality without deciding case-only behavior."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "missed",
+      "justification": "No decision is shown about complete refusal details or exit code, and src/cli.js was not changed."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The agent neither discusses nor implements a preview or confirmation policy."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy"
+    ],
+    "decisionsLost": [
+      "atomicity"
+    ],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session directly implemented a bounded preflight fix and added focused regression coverage without asking unnecessary or forbidden questions. It missed every deeper safety decision, and its claimed atomicity is incomplete because a later renameSync failure can still leave earlier renames applied.",
+  "rubricMaterialCount": 8
+}

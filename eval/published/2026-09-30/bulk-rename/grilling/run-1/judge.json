@@ -1,0 +1,82 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 5,
+    "distinctApproaches": 5,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Q1 explicitly asked what to do when a target exists, and the user chose aborting before changes while reporting every clash."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Q2 and Q5 asked whether failures permit partial completion and how broadly transactional protection must apply; the user required staging, rollback, and no half-renamed directory."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "Q4 addressed exact source-to-same-target no-ops, but nobody decided whether files already matching the overall target naming scheme belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "Q3 explicitly asked about a destination occupied by another source in the same plan, and the user chose collision-and-abort."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "The transcript never asked or settled what a second identical successful invocation should do."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question or repository-based resolution addressed case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "Q8 asked when and where success and failure output should appear, and multiple later questions settled recovery diagnostics and nonzero exits."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session never asked or settled whether preview or confirmation should be part of the fix."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 15,
+    "approvalGates": 1,
+    "withSingleAxis": 12,
+    "recommendationAccepted": 10,
+    "withConcreteOptions": 14,
+    "withRecommendation": 14,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session exhaustively negotiated transactional execution, crash recovery, locking, and diagnostics, and the implementation visibly reflects those choices. It over-expanded an expected bounded fix into an architectural journal-and-recovery system, used a final approval gate, and missed self-inclusion, repeat-run idempotency, case-only filesystem behavior, and preview policy.",
+  "rubricMaterialCount": 8
+}

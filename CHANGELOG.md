@@ -7,6 +7,26 @@ before 0.4.0 were private iterations and are not listed.
 
 ## [Unreleased]
 
+### Added
+
+- `eval/RESULTS.md`: a five-repeat comparison of settle against no skill,
+  grilling, and superpowers brainstorming on the two bounded scenarios, with
+  the judge output of all fifty runs under `eval/published/2026-09-30/`.
+- Two rival evaluation arms, `grilling` and `superpowers-brainstorming`,
+  fetched from pinned commits of their own repositories at run time.
+- `npm run eval:compare`, which measures arms in rotated rounds so a stopped
+  run is still a complete comparison, and `npm run eval:summary`, which
+  renders results directories as Markdown.
+
+### Fixed
+
+- Text-channel Codex runs, the simulated user, and the judge use a temporary
+  Codex home holding only the sign-in file, as native runs already did;
+  skills installed under the operator's home no longer reach them.
+- Token totals of text-channel runs on Codex 0.158 and newer, where a resumed
+  `codex exec` reports the thread's running total, are read as per-turn
+  differences instead of being summed.
+
 ## [0.5.0] - 2026-09-08
 
 ### Changed

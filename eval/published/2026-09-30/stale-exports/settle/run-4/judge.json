@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first native question asked whether source changes should affect all runs, ad hoc runs only, or be handled through a shorter TTL; the user chose “Ad hoc only.”"
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The freshness question contrasted source-change freshness with time-bounded staleness, and the chosen ad-hoc policy was later specified as fresh-by-default validation against the current source version."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first question explicitly framed the nightly performance risk, and the user chose the option preserving stale-cache use for nightly runs."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The “CLI mode” question offered a fresh default with `--allow-stale` versus an opt-in `--fresh`, and the user selected the former."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "The “Mid-rewrite” question asked whether to retry, finish the initial snapshot, or fail, and the user selected “Finish snapshot.”"
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The “Mid-rewrite” question directly settled behavior when the orders file changes during an export: finish from the complete snapshot already read."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The user was never asked to choose modification metadata, content hashing, or bypassing cache on the fresh path; the implementation silently chose mtime/ctime/size metadata."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The “Bad source” question offered failure with no CSV versus stale-cache fallback, and the user chose “Fail clearly.”"
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The “Mid-rewrite” options included bounded retry, no-retry snapshot completion, and failure; the user chose snapshot completion without retry."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 6,
+    "approvalGates": 1,
+    "withSingleAxis": 4,
+    "recommendationAccepted": 3,
+    "withConcreteOptions": 5,
+    "withRecommendation": 5,
+    "withRepositoryEvidence": 5
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session clearly declared a bounded path, presented three genuinely distinct solution shapes first, and used repository-specific evidence for every substantive user question. It thoroughly settled most core and depth behavior and implemented those answers, but it never exposed the materially important cache change-detection choice and silently selected filesystem metadata.",
+  "rubricMaterialCount": 9
+}

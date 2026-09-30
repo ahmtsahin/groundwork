@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "missed",
+      "justification": "The agent globally invalidated cached results when the source metadata changes without asking whether ad hoc and nightly runs should share that behavior."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "missed",
+      "justification": "No question or explicit acceptance criterion established how stale an ad hoc export may be."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "The existing cache comment states it keeps the nightly batch under ten minutes, and the implementation retained the six-hour cache."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "missed",
+      "justification": "The agent made freshness automatic and introduced no explicit CLI signal without asking the user to choose the interface contract."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "Nothing in the transcript settles whether an export must represent one consistent source snapshot."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The implementation checks metadata before reading but silently assumes behavior if the source is rewritten during the subsequent read."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The agent silently chose modification time plus file size via ordersVersion(), although the repository does not establish that as the required policy."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "The transcript does not settle what the CLI should emit when valid source data cannot be obtained."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "No retry behavior or retry bound was discussed or established."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "nightly-budget"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The implementation preserved the pinned CSV header and caching while making source changes invalidate entries before the six-hour TTL. However, the agent asked no questions and silently selected metadata-based global invalidation, leaving nearly every persona-dependent core and depth decision unsettled.",
+  "rubricMaterialCount": 9
+}

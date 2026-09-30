@@ -1,0 +1,89 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 440851,
+    "tokens": {
+      "input": 344604,
+      "output": 9647,
+      "total": 354251
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 11,
+    "approvalGates": 1,
+    "decisionQuestions": 10
+  },
+  "questionQuality": {
+    "withConcreteOptions": 8,
+    "withRecommendation": 10,
+    "withRepositoryEvidence": 3,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 10,
+    "optionRate": 0.8,
+    "recommendationRate": 1,
+    "evidenceRate": 0.3,
+    "axisPurityRate": 0.8,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 3,
+    "coreTotal": 4,
+    "coreRate": 0.75,
+    "depthSettled": 5,
+    "depthTotal": 5,
+    "depthRate": 1,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "interface-shape"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [
+      "column-order"
+    ],
+    "forbiddenCount": 1
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly settled freshness, consistency, failure, validation, and cache behavior, and the implementation visibly reflects those answers with focused tests. It never declared the expected bounded path or settled the interface-shape decision, and it unnecessarily asked about CSV column order even though the repository already pinned it."
+}

@@ -1,0 +1,89 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 180814,
+    "tokens": {
+      "input": 364329,
+      "output": 6884,
+      "total": 371213
+    }
+  },
+  "interaction": {
+    "agentTurns": 3,
+    "userMessages": 2,
+    "nativeRounds": 0,
+    "humanInputs": 2,
+    "questionsAsked": 2,
+    "approvalGates": 1,
+    "decisionQuestions": 1
+  },
+  "questionQuality": {
+    "withConcreteOptions": 1,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 1,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "optionRate": 1,
+    "recommendationRate": 0,
+    "evidenceRate": 1,
+    "axisPurityRate": 0,
+    "recommendationAccuracy": null
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "interface-shape"
+    ],
+    "resolvedFromRepository": [
+      "nightly-budget"
+    ],
+    "userVolunteered": [
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output"
+    ],
+    "missed": [
+      "change-detection",
+      "retry-policy"
+    ],
+    "closureRate": 0.778,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 7,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session efficiently selected among three genuinely different solution shapes and implemented the chosen fresh-by-default, cached-nightly contract while preserving repository constraints. It was not a thorough interrogation: source-change detection and retry behavior were silently chosen, and the agent declared no work-sizing path before asking its first question."
+}

@@ -1,0 +1,78 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "missed",
+      "justification": "The agent silently chose to reject external target collisions in src/rename.js; neither a user answer nor a repository statement proves that policy over skipping or alternative naming."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "resolved_from_repository",
+      "justification": "README.md explicitly identifies partial application after EEXIST as the complained-about rough edge, and the agent added whole-plan prevalidation."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "Nothing asks or establishes whether already conforming names should remain in the match and rename set, and planRenames was left unchanged."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "missed",
+      "justification": "The agent silently selected temporary-name staging for targets occupied by another source without asking the user or citing a repository fact that settles this policy."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "README.md notes that users commonly run the command twice, but neither the transcript nor the changes settle what the second run should do."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The implementation silently lowercases names only on win32 and does not settle behavior for other case-insensitive filesystems such as macOS."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "missed",
+      "justification": "No question or change settles the refused-run message, output stream, or exit code."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session neither asks about nor establishes whether preview or confirmation is part of the fix."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "atomicity"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session directly implemented preflight collision checks and staging, with focused regression tests, without asking any forbidden questions. It skipped nearly all material policy decisions, and its two-pass rename is not truly atomic because an I/O failure during either pass can still leave temporary or partially renamed files.",
+  "rubricMaterialCount": 8
+}

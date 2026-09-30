@@ -1,0 +1,84 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 303937,
+    "tokens": {
+      "input": 487120,
+      "output": 13214,
+      "total": 500334
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 9,
+    "approvalGates": 1,
+    "decisionQuestions": 8
+  },
+  "questionQuality": {
+    "withConcreteOptions": 8,
+    "withRecommendation": 8,
+    "withRepositoryEvidence": 4,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 8,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.5,
+    "axisPurityRate": 0.625,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 6,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session declared the correct bounded path, investigated most safety-relevant behavior, avoided forbidden questions, and visibly implemented the user’s selected policies. It missed case-insensitive filesystem semantics and silently removed preview behavior; moreover, best-effort rollback and check-then-rename races do not literally guarantee that every failed run leaves all files unchanged or that an existing file is never overwritten."
+}

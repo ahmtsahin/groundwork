@@ -1,0 +1,500 @@
+ADDED test/cache.test.js
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { cachePath, readCache, writeCache } from "../src/cache.js";
+
+test("cache entries are checksummed, age-bounded, and legacy entries are rejected", { concurrency: false }, () => {
+  const originalCwd = process.cwd();
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-cache-test-"));
+  try {
+    process.chdir(directory);
+    const rows = [{ id: "one" }];
+    writeCache("range", rows, 1_000);
+
+    assert.deepEqual(readCache("range", 500, 1_500)?.rows, rows);
+    assert.equal(readCache("range", 499, 1_500), null);
+    assert.equal(readCache("range", 500, 999), null, "future timestamps are untrusted");
+
+    const file = cachePath("range");
+    const stored = JSON.parse(readFileSync(file, "utf8"));
+    stored.rows[0].id = "tampered";
+    writeFileSync(file, JSON.stringify(stored));
+    assert.equal(readCache("range", 500, 1_100), null);
+
+    writeFileSync(file, JSON.stringify({ writtenAt: 1_000, rows }));
+    assert.equal(readCache("range", 500, 1_100), null, "legacy entries are untrusted");
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cache writes leave only the final atomically-renamed file", { concurrency: false }, () => {
+  const originalCwd = process.cwd();
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-cache-test-"));
+  try {
+    process.chdir(directory);
+    writeCache("range", [], 1_000);
+    const contents = readFileSync(cachePath("range"), "utf8");
+    assert.doesNotThrow(() => JSON.parse(contents));
+    assert.deepEqual(readdirSync(path.dirname(cachePath("range"))), ["range.json"]);
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+
+ADDED test/store.test.js
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { loadStableOrders } from "../src/store.js";
+
+test("stable acquisition retries changing reads and returns the first matching pair", () => {
+  const changing = Buffer.from('[{"id":"changing"}]');
+  const other = Buffer.from('[{"id":"other"}]');
+  const stable = Buffer.from('[{"id":"stable"}]');
+  const reads = [changing, other, stable, stable];
+  const result = loadStableOrders({ readSource: () => reads.shift() });
+  assert.equal(result[0].id, "stable");
+  assert.equal(reads.length, 0);
+});
+
+test("stable acquisition stops after three failed pairs", () => {
+  let reads = 0;
+  assert.throws(() => loadStableOrders({
+    readSource: () => Buffer.from(String(reads += 1))
+  }), /after 3 attempts/);
+  assert.equal(reads, 6);
+});
+
+test("stable but invalid JSON is retried and then rejected", () => {
+  let reads = 0;
+  assert.throws(() => loadStableOrders({
+    readSource: () => { reads += 1; return Buffer.from("not json"); }
+  }), /after 3 attempts/);
+  assert.equal(reads, 6);
+});
+
+
+MODIFIED README.md
+--- before ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Not decided
+
+Whether ad hoc runs should see fresher data than the nightly batch does.
+
+--- after ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` reads a stable source snapshot and writes fresh CSV to stdout.
+- `reportkit --batch <from> <to>` enables the nightly batch cache.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Freshness policy
+
+- Ad hoc exports do not normally use or populate the cache. If stable source
+  acquisition fails, an exact-range, verified batch snapshot no more than 15
+  minutes old may be used with a warning on stderr.
+- Batch snapshots are checksummed, written atomically, and reusable for up to
+  24 hours. Older and legacy cache entries are regenerated.
+
+
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import {
+  existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync
+} from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+const CACHE_VERSION = 2;
+
+export const BATCH_TTL_MS = 24 * 60 * 60 * 1000;
+export const FALLBACK_TTL_MS = 15 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+function checksumFor(payload) {
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+export function readCache(key, ttlMs, now = Date.now()) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  try {
+    const stored = JSON.parse(readFileSync(file, "utf8"));
+    const payload = {
+      version: stored.version,
+      writtenAt: stored.writtenAt,
+      rows: stored.rows
+    };
+    if (payload.version !== CACHE_VERSION) return null;
+    if (!Number.isFinite(payload.writtenAt) || !Array.isArray(payload.rows)) return null;
+    if (typeof stored.checksum !== "string" || checksumFor(payload) !== stored.checksum) return null;
+
+    const ageMs = now - payload.writtenAt;
+    if (ageMs < 0 || ageMs > ttlMs) return null;
+    return { rows: payload.rows, writtenAt: payload.writtenAt, ageMs };
+  } catch {
+    return null;
+  }
+}
+
+export function writeCache(key, rows, now = Date.now()) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  const payload = { version: CACHE_VERSION, writtenAt: now, rows };
+  const stored = { ...payload, checksum: checksumFor(payload) };
+  const destination = cachePath(key);
+  const temporary = `${destination}.${process.pid}.${randomUUID()}.tmp`;
+
+  try {
+    writeFileSync(temporary, JSON.stringify(stored), "utf8");
+    renameSync(temporary, destination);
+  } finally {
+    rmSync(temporary, { force: true });
+  }
+}
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const args = process.argv.slice(2);
+const batchIndex = args.indexOf("--batch");
+const batch = batchIndex !== -1;
+if (batch) args.splice(batchIndex, 1);
+const [from, to, ...extra] = args;
+
+if (!from || !to || extra.length > 0) {
+  console.error("usage: reportkit [--batch] <from> <to>");
+  process.exitCode = 1;
+} else {
+  try {
+    process.stdout.write(toCsv(exportOrders(from, to, { batch })));
+  } catch (error) {
+    console.error(`reportkit: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { BATCH_TTL_MS, FALLBACK_TTL_MS, readCache, writeCache } from "./cache.js";
+import { loadStableOrders, ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+function rowsFromSnapshot(orders, from, to) {
+  return ordersForRange(orders, from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+}
+
+export function exportOrders(from, to, {
+  batch = false,
+  now = Date.now(),
+  warn = (message) => console.error(message),
+  loadOrders = loadStableOrders,
+  readCached = readCache,
+  writeCached = writeCache
+} = {}) {
+  const key = cacheKey(from, to);
+
+  if (batch) {
+    const cached = readCached(key, BATCH_TTL_MS, now);
+    if (cached) return cached.rows;
+    const rows = rowsFromSnapshot(loadOrders(), from, to);
+    writeCached(key, rows, now);
+    return rows;
+  }
+
+  try {
+    return rowsFromSnapshot(loadOrders(), from, to);
+  } catch (error) {
+    const fallback = readCached(key, FALLBACK_TTL_MS, now);
+    if (!fallback) throw error;
+    warn(`warning: source snapshot failed; using trusted batch snapshot (${Math.floor(fallback.ageMs / 1000)}s old)`);
+    return fallback.rows;
+  }
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+
+const SOURCE_FILE = "data/orders.json";
+const SNAPSHOT_ATTEMPTS = 3;
+
+function checksum(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+export function loadStableOrders({
+  readSource = () => readFileSync(SOURCE_FILE),
+  attempts = SNAPSHOT_ATTEMPTS
+} = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const first = readSource();
+      const second = readSource();
+      if (checksum(first) !== checksum(second)) {
+        lastError = new Error("order source changed while it was being read");
+        continue;
+      }
+      const orders = JSON.parse(Buffer.from(first).toString("utf8"));
+      if (!Array.isArray(orders)) throw new Error("order source must contain an array");
+      return orders;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(
+    `could not acquire a stable order snapshot after ${attempts} attempts: ${lastError?.message ?? "unknown error"}`,
+    { cause: lastError }
+  );
+}
+
+export function ordersForRange(orders, from, to) {
+  return orders.filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+import { BATCH_TTL_MS, FALLBACK_TTL_MS } from "../src/cache.js";
+import { exportOrders } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+const sourceRows = [
+  { id: "new", placedAt: "2026-01-02", total: 10, status: "paid" }
+];
+
+test("ad hoc exports bypass cache when stable source acquisition succeeds", () => {
+  let cacheReads = 0;
+  let cacheWrites = 0;
+  const rows = exportOrders("2026-01-01", "2026-01-03", {
+    loadOrders: () => sourceRows,
+    readCached: () => { cacheReads += 1; return { rows: [{ id: "old" }] }; },
+    writeCached: () => { cacheWrites += 1; }
+  });
+  assert.equal(rows[0].id, "new");
+  assert.equal(cacheReads, 0);
+  assert.equal(cacheWrites, 0);
+});
+
+test("ad hoc acquisition failure uses only the short-lived trusted cache path and warns", () => {
+  const warnings = [];
+  let requestedTtl;
+  const rows = exportOrders("2026-01-01", "2026-01-03", {
+    now: 1_000_000,
+    loadOrders: () => { throw new Error("source unavailable"); },
+    readCached: (_key, ttl) => {
+      requestedTtl = ttl;
+      return { rows: [{ id: "fallback" }], ageMs: 12_345 };
+    },
+    warn: (message) => warnings.push(message)
+  });
+  assert.equal(requestedTtl, FALLBACK_TTL_MS);
+  assert.equal(rows[0].id, "fallback");
+  assert.match(warnings[0], /12s old/);
+});
+
+test("ad hoc acquisition failure is rethrown when no trusted fallback exists", () => {
+  assert.throws(() => exportOrders("a", "b", {
+    loadOrders: () => { throw new Error("source unavailable"); },
+    readCached: () => null
+  }), /source unavailable/);
+});
+
+test("batch reuses trusted entries for up to 24 hours", () => {
+  let requestedTtl;
+  const rows = exportOrders("a", "b", {
+    batch: true,
+    loadOrders: () => { throw new Error("must not load source"); },
+    readCached: (_key, ttl) => {
+      requestedTtl = ttl;
+      return { rows: [{ id: "batch" }] };
+    }
+  });
+  assert.equal(requestedTtl, BATCH_TTL_MS);
+  assert.equal(rows[0].id, "batch");
+});
+
+test("batch cache misses acquire one snapshot and populate the exact range", () => {
+  let written;
+  const rows = exportOrders("2026-01-02", "2026-01-02", {
+    batch: true,
+    now: 42,
+    loadOrders: () => [...sourceRows, { id: "out", placedAt: "2026-02-01" }],
+    readCached: () => null,
+    writeCached: (key, cachedRows, now) => { written = { key, cachedRows, now }; }
+  });
+  assert.deepEqual(rows.map(({ id }) => id), ["new"]);
+  assert.deepEqual(written, {
+    key: "orders-2026-01-02-2026-01-02",
+    cachedRows: rows,
+    now: 42
+  });
+});

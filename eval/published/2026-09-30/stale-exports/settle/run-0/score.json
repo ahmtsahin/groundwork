@@ -1,0 +1,88 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 352023,
+    "tokens": {
+      "input": 486436,
+      "output": 11565,
+      "total": 498001
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 4,
+    "humanInputs": 4,
+    "questionsAsked": 7,
+    "approvalGates": 1,
+    "decisionQuestions": 6
+  },
+  "questionQuality": {
+    "withConcreteOptions": 6,
+    "withRecommendation": 6,
+    "withRepositoryEvidence": 6,
+    "withSingleAxis": 3,
+    "recommendationAccepted": 5,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 0.5,
+    "recommendationAccuracy": 0.833
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [
+      "nightly-budget"
+    ],
+    "userVolunteered": [],
+    "missed": [
+      "change-detection"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session declared the correct bounded path, grounded every substantive question in specific repository evidence, preserved the documented compatibility constraints, and visibly implemented the user’s selected behaviors. Its main gap is that it silently chose modification-time invalidation even though change detection was a material persona-owned decision; the final test also simulated sequential cache writers rather than truly overlapping processes."
+}

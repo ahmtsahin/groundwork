@@ -1,0 +1,84 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The native “Collision” question asked whether an occupied target should abort unchanged, skip conflicts, or replace targets; the user chose “Abort unchanged.”"
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The collision and “Mid-run” questions explicitly asked whether failures leave prior work or trigger rollback, and the user chose abort unchanged plus rollback and fail."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "The “Repeat run” question asked how an already correctly named source/target step should behave, and the user chose an accepted no-op."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The “Plan clash” question asked whether a target occupied by another source in the same plan should be supported or rejected; the user chose staged plan moves."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The “Repeat run” question cited accidental reruns and asked whether identity steps should no-op or abort; the user chose no-op."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question, repository resolution, or volunteered answer addressed case-only renames or collision semantics on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The “Output” question asked what stdout should contain on failure, with stderr and nonzero exit specified; the user chose output only after full success."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "asked",
+      "justification": "The “Output” question offered keeping the proposed plan before execution versus emitting mappings only after success, and the user rejected advance plan output."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 10,
+    "approvalGates": 1,
+    "withSingleAxis": 9,
+    "recommendationAccepted": 9,
+    "withConcreteOptions": 9,
+    "withRecommendation": 9,
+    "withRepositoryEvidence": 9
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session declared the expected bounded path, grounded every substantive question in specific repository evidence, avoided all forbidden questions, and visibly implemented nearly every settled behavior. It missed the case-insensitive-filesystem decision. The implementation provides tested rollback for ordinary execution failures, but because rollback is explicitly best-effort and may leave staged residue, it does not literally guarantee that every unsuccessful run leaves every file unchanged.",
+  "rubricMaterialCount": 8
+}

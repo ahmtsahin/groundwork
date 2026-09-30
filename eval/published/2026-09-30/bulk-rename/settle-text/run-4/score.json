@@ -1,0 +1,84 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 426211,
+    "tokens": {
+      "input": 662979,
+      "output": 18932,
+      "total": 681911
+    }
+  },
+  "interaction": {
+    "agentTurns": 8,
+    "userMessages": 7,
+    "nativeRounds": 0,
+    "humanInputs": 7,
+    "questionsAsked": 14,
+    "approvalGates": 1,
+    "decisionQuestions": 13
+  },
+  "questionQuality": {
+    "withConcreteOptions": 13,
+    "withRecommendation": 13,
+    "withRepositoryEvidence": 7,
+    "withSingleAxis": 12,
+    "recommendationAccepted": 12,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.538,
+    "axisPurityRate": 0.923,
+    "recommendationAccuracy": 0.923
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 5,
+    "decisionsLost": 1,
+    "survivalRate": 0.833,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session declared the bounded path up front, gathered many concrete safety and recovery decisions, and visibly implemented most selected policies without asking forbidden repository-settled questions. It over-expanded into an architectural transaction system, missed case-insensitive filesystem and preview decisions, and the implementation does not literally guarantee unchanged files after every failure or prevent overwrite races from external writers."
+}

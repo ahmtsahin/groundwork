@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "missed",
+      "justification": "The agent silently applied source-mtime invalidation to every export invocation without asking whether ad hoc and nightly behavior should differ."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "missed",
+      "justification": "No question or stated acceptance criterion established how stale an ad hoc export may be."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "The retained six-hour cache and comment that it keeps the nightly batch under ten minutes visibly use the repository's stated constraint."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "missed",
+      "justification": "The agent introduced no explicit CLI signal and never asked the user to choose among a batch flag, ad hoc flag, environment variable, or subcommand."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "Neither the message nor changes settle whether an export must represent one consistent point in time."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The implementation does not define or ask what should happen if the source is rewritten during an export."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The agent silently chose modification time via ordersLastModifiedAt() without asking the user to choose mtime/size, hashing, or bypassing cache."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "No behavior was established for CLI output when valid data cannot be obtained."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "No retry behavior or bound was discussed or implemented for reads racing the sync job."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "nightly-budget"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The implementation preserved the pinned CSV schema, dependencies, and cache while adding a regression-tested path to fresher data. However, the agent asked no questions and silently chose a global mtime-based policy, leaving nearly every persona-dependent core and depth decision unsettled.",
+  "rubricMaterialCount": 9
+}

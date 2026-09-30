@@ -1,0 +1,91 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 3,
+    "distinctApproaches": 2,
+    "fakeAlternatives": 1,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "Q3 explicitly asked whether strict freshness applies by default to ad hoc exports, only with a flag, or everywhere."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "Q1 asked what freshness contract applies, and the user answered that anything older than fifteen minutes is unacceptable."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "Q3 asked how strict ad hoc behavior should coexist with the nightly batch that relies on caching."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "Q3 offered `--allow-stale`, `--fresh`, and no mode distinction as explicit CLI choices."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "Q1 asked what data an export must contain, and the user specified that the file must be one consistent snapshot from export start."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "Q7 asked what evidence should establish a stable snapshot when the source changes during reading, leading to the sidecar protocol in Q11."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "Q4 and Q7 asked how freshness and rewrites should be detected, and the user rejected any method that could miss a same-size rewrite."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "Q2 and Q10 explicitly asked whether invalid data should produce no file, a nonzero exit, and an error on stderr."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "Q6 asked for the retry bound and Q19 asked which failure classes consume that budget."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 20,
+    "approvalGates": 1,
+    "withSingleAxis": 10,
+    "recommendationAccepted": 16,
+    "withConcreteOptions": 19,
+    "withRecommendation": 19,
+    "withRepositoryEvidence": 7
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly elicited both core and depth decisions, avoided forbidden repository-answerable questions, and visibly implemented every settled material decision. It did not declare the expected bounded path before questioning, presented the main approach choice only after detail questions, and ended with an unnecessary implementation-approval gate.",
+  "rubricMaterialCount": 9
+}

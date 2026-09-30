@@ -1,0 +1,86 @@
+{
+  "arm": "no-skill",
+  "label": "no skill (Codex only)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 0,
+    "wallClockMs": 71070,
+    "tokens": {
+      "input": 168127,
+      "output": 2880,
+      "total": 171007
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 0,
+    "humanInputs": 0,
+    "questionsAsked": 0,
+    "approvalGates": 0,
+    "decisionQuestions": 0
+  },
+  "questionQuality": {
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "optionRate": null,
+    "recommendationRate": null,
+    "evidenceRate": null,
+    "axisPurityRate": null,
+    "recommendationAccuracy": null
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 0,
+    "depthTotal": 5,
+    "depthRate": 0,
+    "asked": [],
+    "resolvedFromRepository": [
+      "collision-policy",
+      "atomicity"
+    ],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "case-insensitive-fs",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "closureRate": 0.25,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 1,
+    "decisionsLost": 1,
+    "survivalRate": 0.5,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session directly implemented a bounded preflight fix and added focused regression coverage without asking unnecessary or forbidden questions. It missed every deeper safety decision, and its claimed atomicity is incomplete because a later renameSync failure can still leave earlier renames applied."
+}

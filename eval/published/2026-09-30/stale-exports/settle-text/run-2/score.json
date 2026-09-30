@@ -1,0 +1,86 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 340007,
+    "tokens": {
+      "input": 479894,
+      "output": 15126,
+      "total": 495020
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 11,
+    "approvalGates": 1,
+    "decisionQuestions": 10
+  },
+  "questionQuality": {
+    "withConcreteOptions": 10,
+    "withRecommendation": 10,
+    "withRepositoryEvidence": 8,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 10,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.8,
+    "axisPurityRate": 0.8,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 5,
+    "depthTotal": 5,
+    "depthRate": 1,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [],
+    "closureRate": 1,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 9,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 2,
+    "fakeAlternatives": 1,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session declared the expected bounded path, grounded most questions in specific repository evidence, and thoroughly covered every core and depth decision without asking forbidden questions. However, its three initial alternatives contained one fake distinction between the same explicit-mode approach with opposite defaults, and the implementation contradicted the user's literal turn-four choice of 3A by warning on cache-write failure even though 3A said to emit no cache error; that contradiction does not map to a rubric material-decision ID."
+}

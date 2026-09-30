@@ -1,0 +1,222 @@
+[
+  {
+    "receivedAt": 1790721671843,
+    "requestId": 0,
+    "threadId": "01a0ef53-1f95-7051-afff-2228ce6acd42",
+    "turnId": "01a0ef53-1fb0-71c1-96f2-64706549c812",
+    "itemId": "call_8cfe6ae3f4e74c88939e4981242d192d",
+    "leadIn": "I’m using the active settle workflow: I’ll first trace the rename flow and tests, then bring only genuinely user-owned behavior choices to the native question form before changing code.\n\nThe initial repository listing is taking longer than expected, so I’m letting that read-only scan finish before narrowing to the owning module.\n\nThis is a **bounded** change: the existing single-directory rename flow is changing its collision behavior, with no new public interface or stored format.\n\nVerified facts:\n\n- `applyRenames` executes the plan sequentially and lets the first filesystem error escape, so earlier steps remain applied (`src/rename.js`, `applyRenames`).\n- The CLI prints the entire plan before applying it, and diagnostics conventionally belong on stderr (`src/cli.js`; `AGENTS.md`).\n- Existing targets are a documented common condition, including accidental repeat runs (`README.md`, “How it is used” and “Known rough edge”).\n- Undo/journaling is explicitly out of scope (`README.md`, “Out of scope”).\n\n**Inference:** The core fix should prevent a collision from producing a partially applied batch, but the repository does not decide whether a colliding batch should be rejected or partially skipped. That answer determines failure semantics, exit behavior, and the tests; later questions about error presentation wait on it.",
+    "questions": [
+      {
+        "id": "collision_behavior",
+        "header": "Collision",
+        "question": "What should happen when any planned target already exists? A wrong choice either rejects useful non-conflicting work or silently produces an incomplete sequence; current code stops at the collision after prior renames (`src/rename.js`, `applyRenames`).",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Reject batch (Recommended)",
+            "description": "Detect all collisions before writing and rename nothing; safest, but one conflict blocks every otherwise-valid rename."
+          },
+          {
+            "label": "Skip conflicts",
+            "description": "Continue with non-conflicting renames and report skipped files; completes more work, but deliberately produces a partial batch."
+          },
+          {
+            "label": "Replace targets",
+            "description": "Overwrite existing targets and complete the batch; simplest outcome, but can destroy unrelated files."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "collision_behavior",
+        "answer": "Reject batch (Recommended)"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1790721695413,
+    "requestId": 1,
+    "threadId": "01a0ef53-1f95-7051-afff-2228ce6acd42",
+    "turnId": "01a0ef53-1fb0-71c1-96f2-64706549c812",
+    "itemId": "call_beb78d4ec6d845be8d624079b6c06997",
+    "leadIn": "The first decision is settled: any true collision rejects the whole batch before file changes.\n\nVerified facts:\n\n- Matching includes every regular file satisfying the pattern, including names produced by an earlier run (`src/match.js`, `matchFiles`).\n- Plans are sorted and numbered from 1, so an existing target can itself be a planned source (the checked-in `fixtures/photo-001.jpg` demonstrates this).\n- There is no lock, staging area, rollback, or exception handling in the current apply path (`src/rename.js`; `src/cli.js`).\n- Scripts consume the CLI, so exit status and diagnostics are part of observable compatibility (`README.md`; `AGENTS.md`).\n\n**Inference:** “Already exists” splits into an external occupant versus a target temporarily occupied by another source in the same batch. Also, preflight alone has a concurrency gap: another process can create a target after validation. These answers determine whether implementation needs staging/rollback or only validation, and what the CLI promises on failure.",
+    "questions": [
+      {
+        "id": "source_target_overlap",
+        "header": "Overlap",
+        "question": "If a target is currently occupied only because that same file is also a source in this batch, should it count as a collision? A wrong choice either blocks valid reorderings/re-runs or risks surprising movement; the fixture and sorted planner allow this overlap (`fixtures/photo-001.jpg`; `src/rename.js`, `planRenames`).",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Allow planned moves (Recommended)",
+            "description": "Treat planned sources as vacatable and use safe staging; supports reorderings, but adds internal temporary moves."
+          },
+          {
+            "label": "Reject any occupant",
+            "description": "Abort whenever a target exists at start, even if it is a planned source; simpler and conservative, but blocks reorderings and many repeat runs."
+          }
+        ]
+      },
+      {
+        "id": "runtime_failure",
+        "header": "Failure",
+        "question": "After preflight passes, what should happen if a rename later fails (permissions, I/O, or a race)? A wrong choice can leave the same partial state users reported; current application has no recovery (`src/rename.js`, `applyRenames`).",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Roll back batch (Recommended)",
+            "description": "Best-effort restore all moves from this invocation and fail nonzero; avoids ordinary partial results, but rollback itself cannot be guaranteed after severe filesystem failure."
+          },
+          {
+            "label": "Collision-only fix",
+            "description": "Prevent known starting collisions but leave mid-run failures partial; smaller change, but the partial-state failure mode remains possible."
+          }
+        ]
+      },
+      {
+        "id": "error_output",
+        "header": "Error text",
+        "question": "How should a rejected batch be reported? A wrong choice can break scripts or leave humans without actionable detail; today uncaught errors exit nonzero and Node writes a stack to stderr (`src/cli.js`; `AGENTS.md`).",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Concise list (Recommended)",
+            "description": "Print each conflicting target to stderr and exit nonzero; script-safe and actionable, but changes the exact raw Node error text."
+          },
+          {
+            "label": "Raw exception",
+            "description": "Throw a collision error and retain Node’s stack-style stderr/nonzero behavior; minimal CLI change, but noisy and less actionable."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "source_target_overlap",
+        "answer": "Allow planned moves (Recommended)"
+      },
+      {
+        "questionId": "runtime_failure",
+        "answer": "Roll back batch (Recommended)"
+      },
+      {
+        "questionId": "error_output",
+        "answer": "Concise list (Recommended)"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1790721717664,
+    "requestId": 2,
+    "threadId": "01a0ef53-1f95-7051-afff-2228ce6acd42",
+    "turnId": "01a0ef53-1fb0-71c1-96f2-64706549c812",
+    "itemId": "call_b32c80c23bba462980e6e4d7ce6f95b4",
+    "leadIn": "The contract now includes planned-source overlap, rollback after runtime failure, and concise stderr reporting.\n\nVerified facts:\n\n- A replacement without `#` creates duplicate destination names for every match (`src/rename.js`, `replacement.replace`).\n- The CLI can be launched concurrently, and the repository describes both scripts and accidental repeat runs; no repository lock exists (`README.md`; `src/cli.js`).\n- There is no persistent state today, and a rename journal remains explicitly excluded (`README.md`, “Out of scope”).\n- Empty matches naturally produce an empty plan and no writes (`src/match.js`; `src/rename.js`).\n\n**Inference:** Two material edges remain: duplicate targets within one plan and two invocations racing over the same directory. Both can recreate partial or ambiguous results even after ordinary collision preflight. Their answers determine validation and whether runs must be mutually exclusive.",
+    "questions": [
+      {
+        "id": "duplicate_targets",
+        "header": "Duplicates",
+        "question": "What should happen when two sources map to the same target within one plan? A wrong choice can silently discard or skip a source; replacements without `#` create this condition (`src/rename.js`, `planRenames`).",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Reject batch (Recommended)",
+            "description": "List the duplicate target and rename nothing; preserves every source, but disallows intentional many-to-one plans."
+          },
+          {
+            "label": "Keep first",
+            "description": "Rename the first source and skip later duplicates; makes partial progress, but the resulting batch omits matched files."
+          }
+        ]
+      },
+      {
+        "id": "concurrent_runs",
+        "header": "Concurrent",
+        "question": "How should a run behave when another renamer invocation is already changing the same directory? A wrong choice can make either run observe moving inputs and undermine rollback; scripts can launch the CLI and there is no lock (`README.md`; `src/rename.js`).",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Refuse overlap (Recommended)",
+            "description": "Fail the later run nonzero while the first is active; deterministic, but requires a short-lived per-directory lock artifact."
+          },
+          {
+            "label": "Race and rollback",
+            "description": "Let both run and rely on collision handling plus best-effort rollback; no lock artifact, but neither batch is reliably isolated."
+          }
+        ]
+      },
+      {
+        "id": "rollback_residue",
+        "header": "Recovery",
+        "question": "If a rare rollback step itself fails, what should remain and be reported? A wrong choice can hide recoverable files or risk deleting data; journaling is out of scope (`README.md`) and rollback was chosen as best-effort.",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Preserve and list (Recommended)",
+            "description": "Leave any recoverable temporary files in place and print their exact paths; safest for data, but manual recovery may be needed."
+          },
+          {
+            "label": "Cleanup anyway",
+            "description": "Attempt to remove temporary artifacts after rollback failure; tidier directory, but can destroy the only recoverable copy."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "duplicate_targets",
+        "answer": "Reject batch (Recommended)"
+      },
+      {
+        "questionId": "concurrent_runs",
+        "answer": "Refuse overlap (Recommended)"
+      },
+      {
+        "questionId": "rollback_residue",
+        "answer": "Preserve and list (Recommended)"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1790721737862,
+    "requestId": 3,
+    "threadId": "01a0ef53-1f95-7051-afff-2228ce6acd42",
+    "turnId": "01a0ef53-1fb0-71c1-96f2-64706549c812",
+    "itemId": "call_9475461ba5bd410e84e3e170c8323558",
+    "leadIn": "All eighteen probes are now closed. The user-set portions of the ledger are:\n\n- Existing external target → reject the entire batch before changes.\n- Target occupied by a planned source → allow it through safe staging.\n- Duplicate planned targets → reject the entire batch.\n- Another invocation already operating on the directory → later invocation refuses to run.\n- Rename failure after work begins → best-effort rollback of the batch.\n- Rollback failure → preserve recoverable temporary files and list their exact paths.\n- Collision reporting → concise conflict list on stderr with nonzero exit.\n\nRepository evidence closes the rest: single-directory/non-recursive scope and no undo journal (`README.md`, `src/match.js`); empty plans are no-ops and ordering remains sorted (`src/match.js`, `src/rename.js`); current stdout plan format and exported interface remain compatible (`src/cli.js`, `src/rename.js`); filesystem permissions remain the authority and no durable state migrates; missing/unreadable directory errors retain their existing failure behavior.\n\n**Resolved contract:** Before changing names, validate duplicate and externally occupied targets; permit target/source overlap via same-directory temporary staging; serialize runs per directory; restore the starting names on apply failure; give concise collision/lock diagnostics, and preserve/list recovery artifacts if rollback cannot finish. Undo, recursion, new dependencies, and a persistent journal remain excluded. Focused tests will prove no changes on collision/duplicates, successful overlap, rollback, lock refusal, and existing numbering behavior.",
+    "questions": [
+      {
+        "id": "contract_confirmation",
+        "header": "Confirm",
+        "question": "Does this resolved contract capture the fix, exclusions, compatibility, and proof correctly, or is anything missing or wrong?",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          {
+            "label": "Implement it (Recommended)",
+            "description": "Proceed with this behavior and focused tests; limitation: rollback remains best-effort under severe filesystem failure."
+          },
+          {
+            "label": "Revise contract",
+            "description": "Pause implementation so you can specify a correction; avoids coding the wrong behavior but delays the fix."
+          }
+        ]
+      }
+    ],
+    "answers": [
+      {
+        "questionId": "contract_confirmation",
+        "answer": "Implement it (Recommended)"
+      }
+    ]
+  }
+]

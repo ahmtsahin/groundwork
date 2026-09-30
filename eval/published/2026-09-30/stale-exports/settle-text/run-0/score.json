@@ -1,0 +1,87 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 272098,
+    "tokens": {
+      "input": 387974,
+      "output": 11199,
+      "total": 399173
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 9,
+    "approvalGates": 1,
+    "decisionQuestions": 8
+  },
+  "questionQuality": {
+    "withConcreteOptions": 8,
+    "withRecommendation": 8,
+    "withRepositoryEvidence": 5,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 6,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.625,
+    "axisPurityRate": 0.625,
+    "recommendationAccuracy": 0.75
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 5,
+    "depthTotal": 5,
+    "depthRate": 1,
+    "asked": [
+      "freshness-scope",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [
+      "staleness-bound"
+    ],
+    "missed": [],
+    "closureRate": 1,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 1,
+    "survivalRate": 0.889,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session declared the bounded path before questioning, presented genuinely different solution approaches first, and thoroughly settled the core and depth behaviors without asking forbidden repository questions. The implementation visibly honors nearly all choices, but it does not enforce or validate the user’s five-minute freshness bound; bypassing a six-hour cache cannot guarantee that the roughly fifteen-minute upstream source is no more than five minutes old."
+}

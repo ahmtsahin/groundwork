@@ -1,0 +1,89 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question explicitly asked the user to choose among “Ad hoc fresh, nightly cached,” source-change invalidation, and a shorter global TTL."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The first question offered normal CLI exports that “reflect the latest source file,” which the user selected and restated as the “latest trustworthy source snapshot.”"
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "Before asking, the agent stated that the six-hour cache protects nightly-batch performance, reflecting README.md’s ten-minute-window constraint."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The selected first-question option proposed an explicit cached/batch mode, and the user chose an explicit command-line mode for nightly runs."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "No question established whether an export must represent one point-in-time snapshot or may mix reads across a source rewrite."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The malformed-file question addressed read failure and fallback, but never chose among finishing an initial read, restarting after change, or incorporating later rows."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The first question let the user choose between bypassing cache for ad hoc runs, invalidating cache when orders.json changes, and shortening the TTL; the user chose the no-cache fresh path."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The agent explicitly asked whether a malformed ad hoc read should fail clearly or fall back to cached data, and the user chose failure with no file."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "user_volunteered",
+      "justification": "While answering the failure-output question, the user volunteered that retrying “a couple of times is fine,” before later approving three total attempts."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 3,
+    "approvalGates": 1,
+    "withSingleAxis": 1,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 2,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 2
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session correctly separated fresh ad hoc exports from explicitly cached nightly runs and implemented the chosen failure and retry behavior without asking any forbidden repository-answerable questions. It was shallow on the depth tier: snapshot consistency and successful concurrent rewrites were never settled, and the final approval checkpoint substituted for further interrogation.",
+  "rubricMaterialCount": 9
+}

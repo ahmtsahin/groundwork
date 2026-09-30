@@ -1,0 +1,89 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 294226,
+    "tokens": {
+      "input": 420791,
+      "output": 10107,
+      "total": 430898
+    }
+  },
+  "interaction": {
+    "agentTurns": 12,
+    "userMessages": 12,
+    "nativeRounds": 0,
+    "humanInputs": 12,
+    "questionsAsked": 12,
+    "approvalGates": 5,
+    "decisionQuestions": 7
+  },
+  "questionQuality": {
+    "withConcreteOptions": 7,
+    "withRecommendation": 4,
+    "withRepositoryEvidence": 2,
+    "withSingleAxis": 6,
+    "recommendationAccepted": 4,
+    "optionRate": 1,
+    "recommendationRate": 0.571,
+    "evidenceRate": 0.286,
+    "axisPurityRate": 0.857,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [
+      "undo-feature"
+    ],
+    "forbiddenCount": 1
+  },
+  "outcome": {
+    "decisionsHonored": 6,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session eventually produced a detailed design and implementation plan reflecting most confirmed safety requirements, with clear no-overwrite, rollback, recovery, and reporting contracts. It asked many late approval gates, revisited the repository-set no-journal decision as a user choice, missed case-insensitive filesystem and preview policy, and did not actually implement the plan after the user explicitly requested implementation."
+}

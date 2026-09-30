@@ -1,0 +1,88 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 367917,
+    "tokens": {
+      "input": 493359,
+      "output": 13348,
+      "total": 506707
+    }
+  },
+  "interaction": {
+    "agentTurns": 8,
+    "userMessages": 7,
+    "nativeRounds": 0,
+    "humanInputs": 7,
+    "questionsAsked": 14,
+    "approvalGates": 1,
+    "decisionQuestions": 13
+  },
+  "questionQuality": {
+    "withConcreteOptions": 13,
+    "withRecommendation": 13,
+    "withRepositoryEvidence": 8,
+    "withSingleAxis": 12,
+    "recommendationAccepted": 10,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.615,
+    "axisPurityRate": 0.923,
+    "recommendationAccuracy": 0.769
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 3,
+    "coreTotal": 4,
+    "coreRate": 0.75,
+    "depthSettled": 5,
+    "depthTotal": 5,
+    "depthRate": 1,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [
+      "change-detection"
+    ],
+    "missed": [
+      "interface-shape"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 6,
+    "distinctApproaches": 6,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session thoroughly settled freshness, consistency, failure, retry, and exact content-detection behavior, and the implementation visibly honored those decisions while preserving the required compatibility constraints. It over-expanded a bounded stale-cache fix into a new upstream manifest protocol and never directly settled the CLI interface-shape decision; the final confirmation was also an approval gate rather than a substantive decision."
+}

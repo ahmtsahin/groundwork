@@ -1,0 +1,2208 @@
+[
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 131623,
+      "tokens": {
+        "input": 185120,
+        "output": 3214,
+        "total": 188334
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 1,
+      "coreTotal": 4,
+      "coreRate": 0.25,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.111,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The implementation preserved the pinned CSV schema, dependencies, and cache while adding a regression-tested path to fresher data. However, the agent asked no questions and silently chose a global mtime-based policy, leaving nearly every persona-dependent core and depth decision unsettled.",
+    "round": 0
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 86650,
+      "tokens": {
+        "input": 240061,
+        "output": 3147,
+        "total": 243208
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 1,
+      "coreTotal": 4,
+      "coreRate": 0.25,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.111,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The implementation preserved the pinned CSV contract and nightly caching while adding regression coverage for invalidation after a source rewrite. However, the agent asked no questions, declared no work-sizing path, and silently chose nearly every core and depth policy, including a metadata-based detector with unresolved race and failure semantics.",
+    "round": 1
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 66663,
+      "tokens": {
+        "input": 140994,
+        "output": 2696,
+        "total": 143690
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 1,
+      "coreTotal": 4,
+      "coreRate": 0.25,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.111,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The implementation preserved the pinned CSV contract, dependency constraint, and nightly cache while adding source-change invalidation and a regression test. However, the session asked no questions, declared no bounded path, and silently chose nearly every core and depth policy despite the scenario requiring those decisions to be surfaced.",
+    "round": 2
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 94881,
+      "tokens": {
+        "input": 204716,
+        "output": 3584,
+        "total": 208300
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 1,
+      "coreTotal": 4,
+      "coreRate": 0.25,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.111,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The implementation preserved the pinned CSV header and caching while making source changes invalidate entries before the six-hour TTL. However, the agent asked no questions and silently selected metadata-based global invalidation, leaving nearly every persona-dependent core and depth decision unsettled.",
+    "round": 3
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 95947,
+      "tokens": {
+        "input": 172256,
+        "output": 4023,
+        "total": 176279
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 1,
+      "coreTotal": 4,
+      "coreRate": 0.25,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.111,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The implementation preserved the pinned CSV shape, avoided dependencies, retained caching, and added a regression test for source changes. However, the agent declared no bounded path, asked no questions, and silently chose the global freshness policy and mtime-plus-size detection while leaving every depth-tier behavior unspecified.",
+    "round": 4
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 352023,
+      "tokens": {
+        "input": 486436,
+        "output": 11565,
+        "total": 498001
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 4,
+      "humanInputs": 4,
+      "questionsAsked": 7,
+      "approvalGates": 1,
+      "decisionQuestions": 6
+    },
+    "questionQuality": {
+      "withConcreteOptions": 6,
+      "withRecommendation": 6,
+      "withRepositoryEvidence": 6,
+      "withSingleAxis": 3,
+      "recommendationAccepted": 5,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.5,
+      "recommendationAccuracy": 0.833
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "change-detection"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session declared the correct bounded path, grounded every substantive question in specific repository evidence, preserved the documented compatibility constraints, and visibly implemented the user’s selected behaviors. Its main gap is that it silently chose modification-time invalidation even though change detection was a material persona-owned decision; the final test also simulated sequential cache writers rather than truly overlapping processes.",
+    "round": 0
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 363678,
+      "tokens": {
+        "input": 533611,
+        "output": 12004,
+        "total": 545615
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 5,
+      "humanInputs": 5,
+      "questionsAsked": 8,
+      "approvalGates": 1,
+      "decisionQuestions": 7
+    },
+    "questionQuality": {
+      "withConcreteOptions": 7,
+      "withRecommendation": 7,
+      "withRepositoryEvidence": 6,
+      "withSingleAxis": 5,
+      "recommendationAccepted": 3,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.857,
+      "axisPurityRate": 0.714,
+      "recommendationAccuracy": 0.429
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [
+        "nightly-budget",
+        "snapshot-consistency"
+      ],
+      "userVolunteered": [],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 9,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session declared the expected bounded path before questioning, presented three genuinely distinct top-level approaches first, and then settled the relevant interface, cache, concurrency, retry, and failure behavior with repository-specific evidence. It was thorough and the implementation visibly honored every settled decision, though the final approval checkpoint was an unnecessary gate and the retry-budget options varied two parameters at once.",
+    "round": 1
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 291851,
+      "tokens": {
+        "input": 508941,
+        "output": 9809,
+        "total": 518750
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 5,
+      "humanInputs": 5,
+      "questionsAsked": 7,
+      "approvalGates": 1,
+      "decisionQuestions": 6
+    },
+    "questionQuality": {
+      "withConcreteOptions": 6,
+      "withRecommendation": 6,
+      "withRepositoryEvidence": 6,
+      "withSingleAxis": 5,
+      "recommendationAccepted": 5,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.833,
+      "recommendationAccuracy": 0.833
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "change-detection"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session correctly declared a bounded path, used repository-specific evidence in every substantive question, and implemented the selected default-fresh versus explicit-cached contract. It also covered concurrency, failure, and retry behavior deeply, but never surfaced the material choice of mtime/size versus hashing versus bypassing cache validation; the implementation silently chose mtime alone.",
+    "round": 2
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 300543,
+      "tokens": {
+        "input": 489630,
+        "output": 10327,
+        "total": 499957
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 4,
+      "humanInputs": 4,
+      "questionsAsked": 5,
+      "approvalGates": 1,
+      "decisionQuestions": 4
+    },
+    "questionQuality": {
+      "withConcreteOptions": 4,
+      "withRecommendation": 4,
+      "withRepositoryEvidence": 4,
+      "withSingleAxis": 2,
+      "recommendationAccepted": 3,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.5,
+      "recommendationAccuracy": 0.75
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "change-detection"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session declared a bounded path before questioning, used repository-specific evidence, and obtained clear choices for nearly every behavioral policy. It did not ask the material change-detection question and silently chose stat-derived identity; the final test also changes file size, so it does not exercise the rubric’s same-size, preserved-mtime risk.",
+    "round": 3
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 282786,
+      "tokens": {
+        "input": 464693,
+        "output": 9797,
+        "total": 474490
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 4,
+      "humanInputs": 4,
+      "questionsAsked": 6,
+      "approvalGates": 1,
+      "decisionQuestions": 5
+    },
+    "questionQuality": {
+      "withConcreteOptions": 5,
+      "withRecommendation": 5,
+      "withRepositoryEvidence": 5,
+      "withSingleAxis": 4,
+      "recommendationAccepted": 3,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.8,
+      "recommendationAccuracy": 0.6
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "change-detection"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session clearly declared a bounded path, presented three genuinely distinct solution shapes first, and used repository-specific evidence for every substantive user question. It thoroughly settled most core and depth behavior and implemented those answers, but it never exposed the materially important cache change-detection choice and silently selected filesystem metadata.",
+    "round": 4
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 272098,
+      "tokens": {
+        "input": 387974,
+        "output": 11199,
+        "total": 399173
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 9,
+      "approvalGates": 1,
+      "decisionQuestions": 8
+    },
+    "questionQuality": {
+      "withConcreteOptions": 8,
+      "withRecommendation": 8,
+      "withRepositoryEvidence": 5,
+      "withSingleAxis": 5,
+      "recommendationAccepted": 6,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.625,
+      "axisPurityRate": 0.625,
+      "recommendationAccuracy": 0.75
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [
+        "staleness-bound"
+      ],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 1,
+      "survivalRate": 0.889,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session declared the bounded path before questioning, presented genuinely different solution approaches first, and thoroughly settled the core and depth behaviors without asking forbidden repository questions. The implementation visibly honors nearly all choices, but it does not enforce or validate the user’s five-minute freshness bound; bypassing a six-hour cache cannot guarantee that the roughly fifteen-minute upstream source is no more than five minutes old.",
+    "round": 0
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 367917,
+      "tokens": {
+        "input": 493359,
+        "output": 13348,
+        "total": 506707
+      }
+    },
+    "interaction": {
+      "agentTurns": 8,
+      "userMessages": 7,
+      "nativeRounds": 0,
+      "humanInputs": 7,
+      "questionsAsked": 14,
+      "approvalGates": 1,
+      "decisionQuestions": 13
+    },
+    "questionQuality": {
+      "withConcreteOptions": 13,
+      "withRecommendation": 13,
+      "withRepositoryEvidence": 8,
+      "withSingleAxis": 12,
+      "recommendationAccepted": 10,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.615,
+      "axisPurityRate": 0.923,
+      "recommendationAccuracy": 0.769
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 3,
+      "coreTotal": 4,
+      "coreRate": 0.75,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [
+        "change-detection"
+      ],
+      "missed": [
+        "interface-shape"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 6,
+      "distinctApproaches": 6,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session thoroughly settled freshness, consistency, failure, retry, and exact content-detection behavior, and the implementation visibly honored those decisions while preserving the required compatibility constraints. It over-expanded a bounded stale-cache fix into a new upstream manifest protocol and never directly settled the CLI interface-shape decision; the final confirmation was also an approval gate rather than a substantive decision.",
+    "round": 1
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 340007,
+      "tokens": {
+        "input": 479894,
+        "output": 15126,
+        "total": 495020
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 11,
+      "approvalGates": 1,
+      "decisionQuestions": 10
+    },
+    "questionQuality": {
+      "withConcreteOptions": 10,
+      "withRecommendation": 10,
+      "withRepositoryEvidence": 8,
+      "withSingleAxis": 8,
+      "recommendationAccepted": 10,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.8,
+      "axisPurityRate": 0.8,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 9,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 2,
+      "fakeAlternatives": 1,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session declared the expected bounded path, grounded most questions in specific repository evidence, and thoroughly covered every core and depth decision without asking forbidden questions. However, its three initial alternatives contained one fake distinction between the same explicit-mode approach with opposite defaults, and the implementation contradicted the user's literal turn-four choice of 3A by warning on cache-write failure even though 3A said to emit no cache error; that contradiction does not map to a rubric material-decision ID.",
+    "round": 2
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 300574,
+      "tokens": {
+        "input": 419360,
+        "output": 12729,
+        "total": 432089
+      }
+    },
+    "interaction": {
+      "agentTurns": 7,
+      "userMessages": 6,
+      "nativeRounds": 0,
+      "humanInputs": 6,
+      "questionsAsked": 8,
+      "approvalGates": 1,
+      "decisionQuestions": 7
+    },
+    "questionQuality": {
+      "withConcreteOptions": 7,
+      "withRecommendation": 7,
+      "withRepositoryEvidence": 7,
+      "withSingleAxis": 2,
+      "recommendationAccepted": 7,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.286,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 9,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 6,
+      "distinctApproaches": 4,
+      "fakeAlternatives": 2,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session thoroughly settled every core and depth decision, grounded each substantive question in named repository evidence, and implemented all selected behavior with focused tests. It did overstate the work as becoming architectural after initially and correctly sizing it as bounded, presented two overlapping sets of whole approaches, and added an unnecessary final approval gate.",
+    "round": 3
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 199878,
+      "tokens": {
+        "input": 317220,
+        "output": 8031,
+        "total": 325251
+      }
+    },
+    "interaction": {
+      "agentTurns": 5,
+      "userMessages": 4,
+      "nativeRounds": 0,
+      "humanInputs": 4,
+      "questionsAsked": 5,
+      "approvalGates": 1,
+      "decisionQuestions": 4
+    },
+    "questionQuality": {
+      "withConcreteOptions": 4,
+      "withRecommendation": 4,
+      "withRepositoryEvidence": 4,
+      "withSingleAxis": 3,
+      "recommendationAccepted": 3,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.75,
+      "recommendationAccuracy": 0.75
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "change-detection"
+      ],
+      "resolvedFromRepository": [
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "retry-policy"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session clearly declared the bounded path, presented three genuinely different solution approaches, grounded every substantive question in repository evidence, and implemented the chosen `--fresh` contract with focused tests. It was not fully thorough at the depth tier because retry behavior during a sync race was never put to the user or otherwise normatively settled.",
+    "round": 4
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 571146,
+      "tokens": {
+        "input": 1031620,
+        "output": 18881,
+        "total": 1050501
+      }
+    },
+    "interaction": {
+      "agentTurns": 9,
+      "userMessages": 8,
+      "nativeRounds": 0,
+      "humanInputs": 8,
+      "questionsAsked": 20,
+      "approvalGates": 1,
+      "decisionQuestions": 19
+    },
+    "questionQuality": {
+      "withConcreteOptions": 19,
+      "withRecommendation": 19,
+      "withRepositoryEvidence": 7,
+      "withSingleAxis": 10,
+      "recommendationAccepted": 16,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.368,
+      "axisPurityRate": 0.526,
+      "recommendationAccuracy": 0.842
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 9,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 3,
+      "distinctApproaches": 2,
+      "fakeAlternatives": 1,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly elicited both core and depth decisions, avoided forbidden repository-answerable questions, and visibly implemented every settled material decision. It did not declare the expected bounded path before questioning, presented the main approach choice only after detail questions, and ended with an unnecessary implementation-approval gate.",
+    "round": 0
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 331043,
+      "tokens": {
+        "input": 679992,
+        "output": 10252,
+        "total": 690244
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 13,
+      "approvalGates": 1,
+      "decisionQuestions": 12
+    },
+    "questionQuality": {
+      "withConcreteOptions": 12,
+      "withRecommendation": 12,
+      "withRepositoryEvidence": 3,
+      "withSingleAxis": 8,
+      "recommendationAccepted": 10,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.25,
+      "axisPurityRate": 0.667,
+      "recommendationAccuracy": 0.833
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "failure-output"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly settled nearly all core and depth behavior, and the implementation visibly reflects those choices with snapshot hashing, immediate ad-hoc invalidation, and an explicit nightly policy. It never settled the CLI failure-output contract, and it added a final approval gate after claiming the design frontier was empty.",
+    "round": 1
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 372606,
+      "tokens": {
+        "input": 501803,
+        "output": 12458,
+        "total": 514261
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 8,
+      "approvalGates": 2,
+      "decisionQuestions": 6
+    },
+    "questionQuality": {
+      "withConcreteOptions": 6,
+      "withRecommendation": 6,
+      "withRepositoryEvidence": 3,
+      "withSingleAxis": 4,
+      "recommendationAccepted": 4,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.5,
+      "axisPurityRate": 0.667,
+      "recommendationAccuracy": 0.667
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 9,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 4,
+      "distinctApproaches": 4,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session thoroughly settled every core and depth decision, and the implementation visibly honors the resulting split between strict ad hoc freshness and TTL-only nightly behavior. It did not declare the expected bounded path before questioning, and it added two approval gates after the substantive decisions were already largely settled.",
+    "round": 2
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 509421,
+      "tokens": {
+        "input": 835173,
+        "output": 15772,
+        "total": 850945
+      }
+    },
+    "interaction": {
+      "agentTurns": 7,
+      "userMessages": 6,
+      "nativeRounds": 0,
+      "humanInputs": 6,
+      "questionsAsked": 15,
+      "approvalGates": 1,
+      "decisionQuestions": 14
+    },
+    "questionQuality": {
+      "withConcreteOptions": 14,
+      "withRecommendation": 14,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 7,
+      "recommendationAccepted": 12,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.5,
+      "recommendationAccuracy": 0.857
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [],
+      "closureRate": 1,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 9,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly elicited every core and depth decision, and the resulting implementation visibly reflects all settled choices. It did not declare the expected bounded sizing before questioning, presented no whole-solution approaches, and ended with an unnecessary approval gate. Although several prompts referenced repository facts generally, none cited a specific required evidence anchor such as a path, test, or named constant.",
+    "round": 3
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 440851,
+      "tokens": {
+        "input": 344604,
+        "output": 9647,
+        "total": 354251
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 11,
+      "approvalGates": 1,
+      "decisionQuestions": 10
+    },
+    "questionQuality": {
+      "withConcreteOptions": 8,
+      "withRecommendation": 10,
+      "withRepositoryEvidence": 3,
+      "withSingleAxis": 8,
+      "recommendationAccepted": 10,
+      "optionRate": 0.8,
+      "recommendationRate": 1,
+      "evidenceRate": 0.3,
+      "axisPurityRate": 0.8,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 3,
+      "coreTotal": 4,
+      "coreRate": 0.75,
+      "depthSettled": 5,
+      "depthTotal": 5,
+      "depthRate": 1,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "snapshot-consistency",
+        "concurrent-change",
+        "change-detection",
+        "failure-output",
+        "retry-policy"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "interface-shape"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [
+        "column-order"
+      ],
+      "forbiddenCount": 1
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly settled freshness, consistency, failure, validation, and cache behavior, and the implementation visibly reflects those answers with focused tests. It never declared the expected bounded path or settled the interface-shape decision, and it unnecessarily asked about CSV column order even though the repository already pinned it.",
+    "round": 4
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 219807,
+      "tokens": {
+        "input": 361320,
+        "output": 8297,
+        "total": 369617
+      }
+    },
+    "interaction": {
+      "agentTurns": 4,
+      "userMessages": 3,
+      "nativeRounds": 0,
+      "humanInputs": 3,
+      "questionsAsked": 3,
+      "approvalGates": 1,
+      "decisionQuestions": 2
+    },
+    "questionQuality": {
+      "withConcreteOptions": 2,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 2,
+      "withSingleAxis": 1,
+      "recommendationAccepted": 0,
+      "optionRate": 1,
+      "recommendationRate": 0,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.5,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "change-detection",
+        "failure-output"
+      ],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [
+        "retry-policy"
+      ],
+      "missed": [
+        "snapshot-consistency",
+        "concurrent-change"
+      ],
+      "closureRate": 0.778,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 7,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session correctly separated fresh ad hoc exports from explicitly cached nightly runs and implemented the chosen failure and retry behavior without asking any forbidden repository-answerable questions. It was shallow on the depth tier: snapshot consistency and successful concurrent rewrites were never settled, and the final approval checkpoint substituted for further interrogation.",
+    "round": 0
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 133077,
+      "tokens": {
+        "input": 335788,
+        "output": 4282,
+        "total": 340070
+      }
+    },
+    "interaction": {
+      "agentTurns": 4,
+      "userMessages": 3,
+      "nativeRounds": 0,
+      "humanInputs": 3,
+      "questionsAsked": 3,
+      "approvalGates": 1,
+      "decisionQuestions": 2
+    },
+    "questionQuality": {
+      "withConcreteOptions": 2,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 1,
+      "recommendationAccepted": 0,
+      "optionRate": 1,
+      "recommendationRate": 0,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.5,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 1,
+      "depthTotal": 5,
+      "depthRate": 0.2,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "change-detection"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.556,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 5,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session correctly settled and implemented the core split between fresh ad hoc exports and cached nightly exports, including an explicit --nightly interface. It was shallow relative to the request for thorough interrogation: snapshot consistency, concurrent rewrites, failure output, and retry behavior were never settled, and the final design confirmation was an approval gate rather than an additional decision.",
+    "round": 1
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 141120,
+      "tokens": {
+        "input": 315523,
+        "output": 5552,
+        "total": 321075
+      }
+    },
+    "interaction": {
+      "agentTurns": 3,
+      "userMessages": 2,
+      "nativeRounds": 0,
+      "humanInputs": 2,
+      "questionsAsked": 2,
+      "approvalGates": 1,
+      "decisionQuestions": 1
+    },
+    "questionQuality": {
+      "withConcreteOptions": 1,
+      "withRecommendation": 1,
+      "withRepositoryEvidence": 1,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 1,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape",
+        "concurrent-change",
+        "change-detection"
+      ],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [
+        "snapshot-consistency",
+        "failure-output"
+      ],
+      "missed": [
+        "retry-policy"
+      ],
+      "closureRate": 0.889,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 8,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session declared the correct bounded path, presented three materially distinct solution shapes, and implemented the selected content-fingerprint design while preserving the repository constraints. Its main weakness is depth: retry behavior was not fully decided, and several deeper choices were bundled into a late approval gate rather than independently interrogated.",
+    "round": 2
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 180814,
+      "tokens": {
+        "input": 364329,
+        "output": 6884,
+        "total": 371213
+      }
+    },
+    "interaction": {
+      "agentTurns": 3,
+      "userMessages": 2,
+      "nativeRounds": 0,
+      "humanInputs": 2,
+      "questionsAsked": 2,
+      "approvalGates": 1,
+      "decisionQuestions": 1
+    },
+    "questionQuality": {
+      "withConcreteOptions": 1,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 1,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": 1,
+      "recommendationRate": 0,
+      "evidenceRate": 1,
+      "axisPurityRate": 0,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "interface-shape"
+      ],
+      "resolvedFromRepository": [
+        "nightly-budget"
+      ],
+      "userVolunteered": [
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output"
+      ],
+      "missed": [
+        "change-detection",
+        "retry-policy"
+      ],
+      "closureRate": 0.778,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 7,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session efficiently selected among three genuinely different solution shapes and implemented the chosen fresh-by-default, cached-nightly contract while preserving repository constraints. It was not a thorough interrogation: source-change detection and retry behavior were silently chosen, and the agent declared no work-sizing path before asking its first question.",
+    "round": 3
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 122128,
+      "tokens": {
+        "input": 266816,
+        "output": 4874,
+        "total": 271690
+      }
+    },
+    "interaction": {
+      "agentTurns": 3,
+      "userMessages": 2,
+      "nativeRounds": 0,
+      "humanInputs": 2,
+      "questionsAsked": 2,
+      "approvalGates": 1,
+      "decisionQuestions": 1
+    },
+    "questionQuality": {
+      "withConcreteOptions": 1,
+      "withRecommendation": 1,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 1,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 9,
+      "coreSettled": 4,
+      "coreTotal": 4,
+      "coreRate": 1,
+      "depthSettled": 1,
+      "depthTotal": 5,
+      "depthRate": 0.2,
+      "asked": [
+        "freshness-scope",
+        "staleness-bound",
+        "nightly-budget",
+        "interface-shape",
+        "change-detection"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "snapshot-consistency",
+        "concurrent-change",
+        "failure-output",
+        "retry-policy"
+      ],
+      "closureRate": 0.556,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 5,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "CSV header stays id,placedAt,total,status",
+        "no new runtime dependencies",
+        "nightly batch can still use cached rows"
+      ],
+      "mustAchieveMet": [
+        "an ad hoc export can produce data newer than the six hour TTL"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": true
+    },
+    "notes": "The session selected and implemented a clear bounded approach that preserves nightly caching while making ad hoc exports fresh, and it avoided all forbidden questions. However, the questioning was shallow: after one bundled approach question it moved to an approval gate without covering snapshot consistency, concurrent rewrites, failure output, or retry bounds.",
+    "round": 4
+  }
+]

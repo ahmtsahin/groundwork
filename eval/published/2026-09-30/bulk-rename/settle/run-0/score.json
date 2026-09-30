@@ -1,0 +1,84 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 227980,
+    "tokens": {
+      "input": 354613,
+      "output": 10320,
+      "total": 364933
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 4,
+    "humanInputs": 4,
+    "questionsAsked": 8,
+    "approvalGates": 1,
+    "decisionQuestions": 7
+  },
+  "questionQuality": {
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 7,
+    "withSingleAxis": 4,
+    "recommendationAccepted": 7,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 0.571,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "idempotency",
+      "case-insensitive-fs"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 6,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session declared the correct bounded path, grounded every substantive question in specific repository evidence, avoided forbidden questions, and implemented the chosen collision, staging, rollback, locking, and reporting behavior. It over-interrogated adjacent implementation details while missing idempotency and case-insensitive filesystem semantics; moreover, best-effort rollback and the validation-to-rename race do not strictly guarantee either acceptance requirement under all failures and races."
+}

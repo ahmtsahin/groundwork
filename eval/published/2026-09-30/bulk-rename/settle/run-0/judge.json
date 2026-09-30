@@ -1,0 +1,81 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The user was asked what should happen when a planned target exists and selected “Reject batch.”"
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The runtime-failure question explicitly contrasted rolling back the batch with leaving mid-run failures partial, and the user selected rollback."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "The source-target-overlap question stated that matching includes previously produced names and asked whether those planned sources should be allowed; the user selected “Allow planned moves.”"
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The source-target-overlap question directly asked how to treat a destination occupied by another source in the same batch, and the user chose safe staging."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "No question established the observable result of a second identical run; references to reruns and planned-source overlap do not determine whether the second run is a no-op."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The session never asked or settled how case-only renames and collision checks behave on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The user chose concise conflict paths on stderr with a nonzero exit in the “Error text” question."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "asked",
+      "justification": "The final contract presented retention of the existing stdout preview alongside automatic preflight and rollback safety, and the user approved that contract with “Implement it.”"
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 8,
+    "approvalGates": 1,
+    "withSingleAxis": 4,
+    "recommendationAccepted": 7,
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 7
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session declared the correct bounded path, grounded every substantive question in specific repository evidence, avoided forbidden questions, and implemented the chosen collision, staging, rollback, locking, and reporting behavior. It over-interrogated adjacent implementation details while missing idempotency and case-insensitive filesystem semantics; moreover, best-effort rollback and the validation-to-rename race do not strictly guarantee either acceptance requirement under all failures and races.",
+  "rubricMaterialCount": 8
+}

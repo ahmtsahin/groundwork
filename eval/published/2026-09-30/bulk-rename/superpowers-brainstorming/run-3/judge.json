@@ -1,0 +1,82 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The first question explicitly offered abort, skip, or choose-another-name policies, and the user chose abort while reporting every collision."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The first question contrasted leaving every file untouched with renaming remaining files, and the user required that any collision leave all files untouched."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The agent declared exact same-path steps harmless but never asked whether files already matching the broader target scheme belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The second question explicitly asked whether a destination occupied by another planned source should be refused or allowed through transactional staging."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The approval design explicitly included no-op reruns, and the user approved that design."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "Neither the conversation nor the implementation addressed case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The user was asked to choose collision behavior, requested every collision be reported, and later approved the design specifying stderr and a nonzero exit status."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "No question or settled repository conclusion addressed whether preview or confirmation should be part of the fix."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 3,
+    "approvalGates": 1,
+    "withSingleAxis": 1,
+    "recommendationAccepted": 2,
+    "withConcreteOptions": 2,
+    "withRecommendation": 2,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session clearly sized the work, asked focused collision and transient-occupancy questions, and implemented aggregate preflight reporting with no new dependencies. It missed self-inclusion, case-insensitive filesystem semantics, and preview policy, and the preflight-only implementation does not guarantee rollback if a non-collision rename fails after earlier moves.",
+  "rubricMaterialCount": 8
+}

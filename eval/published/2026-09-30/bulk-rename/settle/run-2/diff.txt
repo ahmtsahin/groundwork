@@ -1,0 +1,363 @@
+ADDED docs/decisions/2026-09-30-all-or-nothing-renames.md
+# All-or-nothing renames
+
+## Request as understood
+
+Fix the bulk renamer so an existing target does not stop a run halfway and leave
+earlier files renamed.
+
+## Path
+
+Bounded. The behavior belongs to the existing single-directory flow in
+`src/rename.js`; it adds no subsystem, public schema, or persistent state.
+
+## Questions and answers
+
+1. Existing target behavior: **abort unchanged**.
+2. A valid concurrent change after validation: **rollback and fail**.
+3. Targets occupied by other sources in the plan: **support plan moves**.
+4. Duplicate planned targets: **abort unchanged**.
+5. Identity source/target steps: **treat as no-ops**.
+6. Failure output: **stdout contains mappings only after complete success**;
+   diagnostics use stderr and the exit status is nonzero.
+7. Target path scope: **plain filenames inside the selected directory only**.
+8. Failed rollback residue: **keep recoverable staged files and report them**.
+9. Contract confirmation: **implement it**.
+
+## Probe ledger
+
+1. Scope exclusions — recursion and undo/journaling remain out of scope: **repository:** `README.md`, “Bulk-renames files in a single directory” and “Out of scope”.
+2. Empty input — an empty match produces an empty plan and successful no-op: **repository:** `src/match.js` filtering and `src/rename.js` mapping/iteration.
+3. Duplicate input — duplicate destinations abort before mutation: **user:** duplicate-target question, “Abort unchanged”.
+4. Concurrent input — while this invocation applies its plan, a script or second invocation documented in `README.md` may create a newer valid target; this invocation atomically refuses that target, rolls back, and fails: **user:** mid-run question, “Rollback and fail”.
+5. Partial input — an execution failure restores completed work before returning failure: **user:** mid-run question, “Rollback and fail”.
+6. Repeated input — source equal to target is an accepted no-op: **user:** repeat-run question, “No-op step”.
+7. Failed input — a missing/unreadable directory fails in `matchFiles` before mutation; a source missing after planning enters rollback: **repository:** `src/match.js` `readdirSync`; **user:** mid-run question, “Rollback and fail”.
+8. State location — staging files live in the selected directory so moves remain on one filesystem: **user:** plan-clash question, “Support plan moves”; **repository:** `README.md` single-directory boundary.
+9. State lifetime — staging exists only during application, except evidence retained after rollback failure: **user:** recovery question, “Keep staged files”.
+10. State migration — no persistent state format exists or is introduced: **cannot arise:** the change uses transient filesystem names and `README.md` excludes a journal.
+11. Shape readers — the CLI and rename test are the in-repository consumers of `{from,to}` plans: **repository:** imports in `src/cli.js` and `test/rename.test.js`.
+12. Compatibility — retain the plan shape and mapping format; move mapping output until success: **user:** output question, “Only completed”; **repository:** `src/cli.js` mapping format.
+13. Authorization — the local process may rename files allowed by operating-system permissions: **cannot arise:** there is no remote/user authorization seam in this local CLI.
+14. Validation — sources and unique targets must be plain filenames confined to the chosen directory: **user:** path-scope question, “Stay in directory”; duplicate-target question, “Abort unchanged”.
+15. Recording — no persistent operation journal is written: **repository:** `README.md`, “Out of scope”.
+16. Failure presentation — diagnostics go to stderr, stdout reports only a fully successful plan, and exit status is nonzero: **user:** output question, “Only completed”; **repository:** `AGENTS.md` output convention.
+17. Failure residue — rollback restores original sources where possible; unrecoverable staged paths remain and are reported: **user:** recovery question, “Keep staged files”.
+18. Seam placement — extend the existing `applyRenames` and CLI error boundary rather than opening a new interface: **repository:** `src/rename.js` and `src/cli.js` own the current flow.
+
+## Resolved contract
+
+Validate the complete plan before mutation. Reject external collisions, duplicate
+targets, missing sources, and targets outside the selected directory without
+renaming anything. Treat identity steps as no-ops and support chains/cycles by
+staging sources. Place each target with atomic create-if-absent semantics so a
+concurrent writer cannot be overwritten. On an execution failure, restore the
+starting names where possible; retain and report recoverable paths if rollback
+itself fails. Print mappings only after the whole run succeeds. Do not add
+recursion, undo, a journal, or cross-directory targets.
+
+## Verification
+
+`node test/rename.test.js` passed all seven tests, covering plan numbering,
+unchanged-on-collision, duplicate rejection, identity no-ops, cyclic moves,
+path containment, and rollback after an injected concurrent collision. The
+repository's `npm test` command could not start its isolated test worker in the
+managed Windows sandbox (`spawn EPERM`); the same test file passed in-process.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+try {
+  const plan = planRenames(directory, pattern, replacement);
+  applyRenames(directory, plan);
+
+  for (const step of plan) {
+    process.stdout.write(`${step.from} -> ${step.to}\n`);
+  }
+} catch (error) {
+  console.error(error.message);
+  if (error.cause) console.error(error.cause.message);
+  for (const failure of error.recoveryFailures ?? []) {
+    console.error(`manual recovery may be required at ${failure.path}`);
+  }
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { existsSync, linkSync, renameSync, unlinkSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+const defaultFileSystem = { existsSync, linkSync, renameSync, unlinkSync };
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+function isPlainName(name) {
+  return typeof name === "string" && name !== "" && name !== "." &&
+    name !== ".." && path.basename(name) === name && !path.isAbsolute(name);
+}
+
+function validatePlan(directory, plan, fs) {
+  const sources = new Set();
+  const targets = new Set();
+
+  for (const { from, to } of plan) {
+    if (!isPlainName(from) || !isPlainName(to)) {
+      throw new Error("rename source and target must be plain filenames");
+    }
+    if (sources.has(from)) throw new Error(`duplicate source in rename plan: ${from}`);
+    if (targets.has(to)) throw new Error(`duplicate target in rename plan: ${to}`);
+    sources.add(from);
+    targets.add(to);
+  }
+
+  for (const { from } of plan) {
+    if (!fs.existsSync(path.join(directory, from))) {
+      throw new Error(`rename source does not exist: ${from}`);
+    }
+  }
+
+  for (const { from, to } of plan) {
+    if (from !== to && !sources.has(to) && fs.existsSync(path.join(directory, to))) {
+      throw new Error(`rename target already exists: ${to}`);
+    }
+  }
+}
+
+function temporaryPath(directory, index, fs) {
+  let attempt = 0;
+  while (true) {
+    const candidate = path.join(directory, `.renamer-${process.pid}-${index}-${attempt}.tmp`);
+    if (!fs.existsSync(candidate)) return candidate;
+    attempt += 1;
+  }
+}
+
+function rollback(staged, fs) {
+  const failures = [];
+  for (const item of staged) {
+    if (!item.committed) continue;
+    try {
+      if (fs.existsSync(item.temporary)) {
+        fs.unlinkSync(item.target);
+      } else {
+        fs.renameSync(item.target, item.temporary);
+      }
+      item.committed = false;
+    } catch (error) {
+      failures.push({ path: item.target, error });
+    }
+  }
+  for (const item of staged) {
+    if (item.committed || !fs.existsSync(item.temporary)) continue;
+    try {
+      fs.renameSync(item.temporary, item.source);
+    } catch (error) {
+      failures.push({ path: item.temporary, error });
+    }
+  }
+  return failures;
+}
+
+export function applyRenames(directory, plan, fs = defaultFileSystem) {
+  validatePlan(directory, plan, fs);
+  const active = plan.filter(({ from, to }) => from !== to);
+  const staged = [];
+
+  try {
+    for (const [index, step] of active.entries()) {
+      const item = {
+        source: path.join(directory, step.from),
+        target: path.join(directory, step.to),
+        temporary: temporaryPath(directory, index, fs),
+        committed: false
+      };
+      fs.renameSync(item.source, item.temporary);
+      staged.push(item);
+    }
+
+    for (const item of staged) {
+      // Atomic create-if-absent: unlike rename, this cannot overwrite a target
+      // another writer creates after validation.
+      fs.linkSync(item.temporary, item.target);
+      item.committed = true;
+      fs.unlinkSync(item.temporary);
+    }
+  } catch (cause) {
+    const recoveryFailures = rollback(staged, fs);
+    const error = new Error("rename failed; completed work was rolled back", { cause });
+    error.recoveryFailures = recoveryFailures;
+    throw error;
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import * as nativeFs from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { applyRenames, planRenames } from "../src/rename.js";
+
+function directoryWith(files) {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-test-"));
+  for (const [name, contents] of Object.entries(files)) {
+    writeFileSync(path.join(directory, name), contents);
+  }
+  return directory;
+}
+
+function contents(directory, name) {
+  return readFileSync(path.join(directory, name), "utf8");
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("a target collision aborts before any file is renamed", () => {
+  const directory = directoryWith({ "a.jpg": "a", "b.jpg": "b", "photo-002.jpg": "existing" });
+  const plan = [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ];
+
+  assert.throws(() => applyRenames(directory, plan), /target already exists/);
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg", "photo-002.jpg"]);
+  assert.equal(contents(directory, "a.jpg"), "a");
+  assert.equal(contents(directory, "b.jpg"), "b");
+});
+
+test("duplicate targets abort before any file is renamed", () => {
+  const directory = directoryWith({ "a.jpg": "a", "b.jpg": "b" });
+  assert.throws(() => applyRenames(directory, [
+    { from: "a.jpg", to: "same.jpg" },
+    { from: "b.jpg", to: "same.jpg" }
+  ]), /duplicate target/);
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg"]);
+});
+
+test("identity steps are no-ops", () => {
+  const directory = directoryWith({ "photo-001.jpg": "a" });
+  applyRenames(directory, [{ from: "photo-001.jpg", to: "photo-001.jpg" }]);
+  assert.equal(contents(directory, "photo-001.jpg"), "a");
+});
+
+test("sources can exchange names without losing contents", () => {
+  const directory = directoryWith({ "a.jpg": "a", "b.jpg": "b" });
+  applyRenames(directory, [
+    { from: "a.jpg", to: "b.jpg" },
+    { from: "b.jpg", to: "a.jpg" }
+  ]);
+  assert.equal(contents(directory, "a.jpg"), "b");
+  assert.equal(contents(directory, "b.jpg"), "a");
+});
+
+test("targets cannot escape the selected directory", () => {
+  const directory = directoryWith({ "a.jpg": "a" });
+  assert.throws(
+    () => applyRenames(directory, [{ from: "a.jpg", to: "../outside.jpg" }]),
+    /plain filenames/
+  );
+  assert.equal(contents(directory, "a.jpg"), "a");
+});
+
+test("an execution failure rolls completed steps back", () => {
+  const directory = directoryWith({ "a.jpg": "a", "b.jpg": "b" });
+  let links = 0;
+  const failingFs = {
+    ...nativeFs,
+    linkSync(from, to) {
+      links += 1;
+      if (links === 2) throw new Error("simulated concurrent collision");
+      nativeFs.linkSync(from, to);
+    }
+  };
+
+  assert.throws(() => applyRenames(directory, [
+    { from: "a.jpg", to: "one.jpg" },
+    { from: "b.jpg", to: "two.jpg" }
+  ], failingFs), /rolled back/);
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg"]);
+  assert.equal(contents(directory, "a.jpg"), "a");
+  assert.equal(contents(directory, "b.jpg"), "b");
+});

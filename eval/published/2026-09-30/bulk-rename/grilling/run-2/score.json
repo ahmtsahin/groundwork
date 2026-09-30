@@ -1,0 +1,86 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 351081,
+    "tokens": {
+      "input": 610508,
+      "output": 13148,
+      "total": 623656
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 12,
+    "approvalGates": 1,
+    "decisionQuestions": 11
+  },
+  "questionQuality": {
+    "withConcreteOptions": 10,
+    "withRecommendation": 11,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 9,
+    "recommendationAccepted": 10,
+    "optionRate": 0.909,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0.818,
+    "recommendationAccuracy": 0.909
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 2,
+    "depthTotal": 5,
+    "depthRate": 0.4,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "idempotency",
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.625,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 5,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly specified collision handling, transaction rollback, and failure reporting, and the implementation visibly reflects those choices. It over-questioned implementation details without first declaring the expected bounded path, added a redundant final approval gate, and missed explicit treatment of repeat-run idempotency, case-insensitive filesystems, and preview policy. The check-then-rename sequence can still overwrite a target that appears between those operations on filesystems where rename replaces an existing destination, so the absolute no-overwrite requirement is not fully met."
+}

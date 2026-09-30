@@ -1,0 +1,2166 @@
+[
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 173401,
+      "tokens": {
+        "input": 230253,
+        "output": 2912,
+        "total": 233165
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 1,
+      "coreTotal": 3,
+      "coreRate": 0.333,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "atomicity"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "collision-policy",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "case-insensitive-fs",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "closureRate": 0.125,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session directly implemented preflight collision checks and staging, with focused regression tests, without asking any forbidden questions. It skipped nearly all material policy decisions, and its two-pass rename is not truly atomic because an I/O failure during either pass can still leave temporary or partially renamed files.",
+    "round": 0
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 71070,
+      "tokens": {
+        "input": 168127,
+        "output": 2880,
+        "total": 171007
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "collision-policy",
+        "atomicity"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "case-insensitive-fs",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "closureRate": 0.25,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 1,
+      "survivalRate": 0.5,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session directly implemented a bounded preflight fix and added focused regression coverage without asking unnecessary or forbidden questions. It missed every deeper safety decision, and its claimed atomicity is incomplete because a later renameSync failure can still leave earlier renames applied.",
+    "round": 1
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 73942,
+      "tokens": {
+        "input": 159315,
+        "output": 2709,
+        "total": 162024
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 0,
+      "coreTotal": 3,
+      "coreRate": 0,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "case-insensitive-fs",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "closureRate": 0,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 0,
+      "decisionsLost": 0,
+      "survivalRate": null,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session made an unapproved policy choice and implemented skip-and-continue behavior, directly preserving the partial-application failure the task needed to eliminate. Its existence check also has a race on platforms where rename overwrites, so it does not guarantee that existing files are never overwritten.",
+    "round": 2
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 74978,
+      "tokens": {
+        "input": 171126,
+        "output": 3042,
+        "total": 174168
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 1,
+      "coreTotal": 3,
+      "coreRate": 0.333,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "atomicity"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "collision-policy",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "case-insensitive-fs",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "closureRate": 0.125,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 1,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session directly addressed the documented collision case and added a focused regression test without asking forbidden questions. It silently chose several material policies, rejects valid transient collisions, and its preflight does not guarantee rollback for rename-time failures or races, so the full atomicity and no-overwrite guarantees are not achieved.",
+    "round": 3
+  },
+  {
+    "arm": "no-skill",
+    "label": "no skill (Codex only)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 0,
+      "wallClockMs": 58121,
+      "tokens": {
+        "input": 121310,
+        "output": 2251,
+        "total": 123561
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 0,
+      "humanInputs": 0,
+      "questionsAsked": 0,
+      "approvalGates": 0,
+      "decisionQuestions": 0
+    },
+    "questionQuality": {
+      "withConcreteOptions": 0,
+      "withRecommendation": 0,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 0,
+      "optionRate": null,
+      "recommendationRate": null,
+      "evidenceRate": null,
+      "axisPurityRate": null,
+      "recommendationAccuracy": null
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 0,
+      "depthTotal": 5,
+      "depthRate": 0,
+      "asked": [],
+      "resolvedFromRepository": [
+        "collision-policy",
+        "atomicity"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "case-insensitive-fs",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "closureRate": 0.25,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 2,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session directly addressed the reported collision-induced partial rename and added a focused regression test without asking forbidden questions. It was too narrow for a safe bulk-renamer: transient collisions, repeat runs, self-inclusion, case-insensitive paths, and complete failure reporting were left unexamined, and collision preflight alone does not guarantee rollback for failures during the apply loop.",
+    "round": 4
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 227980,
+      "tokens": {
+        "input": 354613,
+        "output": 10320,
+        "total": 364933
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 4,
+      "humanInputs": 4,
+      "questionsAsked": 8,
+      "approvalGates": 1,
+      "decisionQuestions": 7
+    },
+    "questionQuality": {
+      "withConcreteOptions": 7,
+      "withRecommendation": 7,
+      "withRepositoryEvidence": 7,
+      "withSingleAxis": 4,
+      "recommendationAccepted": 7,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 0.571,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "idempotency",
+        "case-insensitive-fs"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session declared the correct bounded path, grounded every substantive question in specific repository evidence, avoided forbidden questions, and implemented the chosen collision, staging, rollback, locking, and reporting behavior. It over-interrogated adjacent implementation details while missing idempotency and case-insensitive filesystem semantics; moreover, best-effort rollback and the validation-to-rename race do not strictly guarantee either acceptance requirement under all failures and races.",
+    "round": 0
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 439787,
+      "tokens": {
+        "input": 574471,
+        "output": 14846,
+        "total": 589317
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 4,
+      "humanInputs": 4,
+      "questionsAsked": 8,
+      "approvalGates": 1,
+      "decisionQuestions": 7
+    },
+    "questionQuality": {
+      "withConcreteOptions": 7,
+      "withRecommendation": 7,
+      "withRepositoryEvidence": 6,
+      "withSingleAxis": 7,
+      "recommendationAccepted": 7,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.857,
+      "axisPurityRate": 1,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session clearly declared a bounded path, avoided forbidden questions, and implemented most explicitly settled behavior with focused tests. It missed case-insensitive filesystem semantics and preview policy, while the implementation cannot strictly guarantee either acceptance requirement because preflight-to-rename races can overwrite a newly created target and rollback is explicitly allowed to fail incompletely.",
+    "round": 1
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 349924,
+      "tokens": {
+        "input": 444645,
+        "output": 12418,
+        "total": 457063
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 4,
+      "humanInputs": 4,
+      "questionsAsked": 10,
+      "approvalGates": 1,
+      "decisionQuestions": 9
+    },
+    "questionQuality": {
+      "withConcreteOptions": 9,
+      "withRecommendation": 9,
+      "withRepositoryEvidence": 9,
+      "withSingleAxis": 9,
+      "recommendationAccepted": 9,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 1,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs"
+      ],
+      "closureRate": 0.875,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 7,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session declared the expected bounded path, grounded every substantive question in specific repository evidence, avoided all forbidden questions, and visibly implemented nearly every settled behavior. It missed the case-insensitive-filesystem decision. The implementation provides tested rollback for ordinary execution failures, but because rollback is explicitly best-effort and may leave staged residue, it does not literally guarantee that every unsuccessful run leaves every file unchanged.",
+    "round": 2
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 402178,
+      "tokens": {
+        "input": 572580,
+        "output": 15119,
+        "total": 587699
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 3,
+      "humanInputs": 3,
+      "questionsAsked": 6,
+      "approvalGates": 1,
+      "decisionQuestions": 5
+    },
+    "questionQuality": {
+      "withConcreteOptions": 5,
+      "withRecommendation": 5,
+      "withRepositoryEvidence": 4,
+      "withSingleAxis": 5,
+      "recommendationAccepted": 5,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.8,
+      "axisPurityRate": 1,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "transient-collision",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "resolvedFromRepository": [
+        "idempotency"
+      ],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "case-insensitive-fs"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session clearly declared a bounded path, used repository-specific evidence, and asked focused questions about collision handling, rollback, locking, and output. It overreached into locking without directly settling self-inclusion or case-insensitive filesystem behavior; moreover, best-effort rollback does not literally guarantee that every failed run leaves every file unchanged.",
+    "round": 3
+  },
+  {
+    "arm": "settle",
+    "label": "settle (native)",
+    "channel": "native",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 16772,
+      "wallClockMs": 321880,
+      "tokens": {
+        "input": 420724,
+        "output": 11935,
+        "total": 432659
+      }
+    },
+    "interaction": {
+      "agentTurns": 1,
+      "userMessages": 0,
+      "nativeRounds": 5,
+      "humanInputs": 5,
+      "questionsAsked": 9,
+      "approvalGates": 1,
+      "decisionQuestions": 8
+    },
+    "questionQuality": {
+      "withConcreteOptions": 8,
+      "withRecommendation": 8,
+      "withRepositoryEvidence": 8,
+      "withSingleAxis": 8,
+      "recommendationAccepted": 8,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 1,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 2,
+      "depthTotal": 5,
+      "depthRate": 0.4,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "transient-collision",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "idempotency",
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.5,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 4,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session declared the bounded path, grounded every substantive question in named repository evidence, and implemented the collision, staging, rollback, and reporting choices. It missed self-inclusion, true second-run semantics, and case-insensitive filesystem behavior; moreover, rollback is only best-effort and rename-after-preflight can overwrite a concurrently created destination on filesystems where rename replaces targets, so the two absolute safety requirements are not fully met.",
+    "round": 4
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 303937,
+      "tokens": {
+        "input": 487120,
+        "output": 13214,
+        "total": 500334
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 9,
+      "approvalGates": 1,
+      "decisionQuestions": 8
+    },
+    "questionQuality": {
+      "withConcreteOptions": 8,
+      "withRecommendation": 8,
+      "withRepositoryEvidence": 4,
+      "withSingleAxis": 5,
+      "recommendationAccepted": 8,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.5,
+      "axisPurityRate": 0.625,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session declared the correct bounded path, investigated most safety-relevant behavior, avoided forbidden questions, and visibly implemented the user’s selected policies. It missed case-insensitive filesystem semantics and silently removed preview behavior; moreover, best-effort rollback and check-then-rename races do not literally guarantee that every failed run leaves all files unchanged or that an existing file is never overwritten.",
+    "round": 0
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 511527,
+      "tokens": {
+        "input": 944972,
+        "output": 21635,
+        "total": 966607
+      }
+    },
+    "interaction": {
+      "agentTurns": 9,
+      "userMessages": 8,
+      "nativeRounds": 0,
+      "humanInputs": 8,
+      "questionsAsked": 13,
+      "approvalGates": 1,
+      "decisionQuestions": 12
+    },
+    "questionQuality": {
+      "withConcreteOptions": 12,
+      "withRecommendation": 12,
+      "withRepositoryEvidence": 9,
+      "withSingleAxis": 10,
+      "recommendationAccepted": 11,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.75,
+      "axisPurityRate": 0.833,
+      "recommendationAccuracy": 0.917
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 2,
+      "distinctApproaches": 2,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session was unusually thorough on transaction staging, rollback, locking, durable recovery, and exact diagnostics, and the implementation visibly reflects those choices. It over-expanded a bounded collision fix into an architectural journal design, missed case-insensitive filesystem semantics and preview policy, and its admitted crash window means it does not literally ensure that every incomplete run immediately leaves all files unchanged.",
+    "round": 1
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 773226,
+      "tokens": {
+        "input": 1294065,
+        "output": 35200,
+        "total": 1329265
+      }
+    },
+    "interaction": {
+      "agentTurns": 12,
+      "userMessages": 11,
+      "nativeRounds": 0,
+      "humanInputs": 11,
+      "questionsAsked": 23,
+      "approvalGates": 2,
+      "decisionQuestions": 21
+    },
+    "questionQuality": {
+      "withConcreteOptions": 21,
+      "withRecommendation": 21,
+      "withRepositoryEvidence": 9,
+      "withSingleAxis": 19,
+      "recommendationAccepted": 19,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.429,
+      "axisPurityRate": 0.905,
+      "recommendationAccuracy": 0.905
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs"
+      ],
+      "closureRate": 0.875,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 7,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "a run that cannot complete leaves every file unchanged",
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session was unusually thorough and visibly implemented nearly every settled behavior, including atomic publication, collision rejection, no-op reruns, and the stream contract. It over-interrogated the user and delayed the whole-approach choice until after many detail questions; it also never surfaced the case-insensitive-filesystem decision, instead encoding an assumption in the implementation.",
+    "round": 2
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 332890,
+      "tokens": {
+        "input": 500652,
+        "output": 14905,
+        "total": 515557
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 8,
+      "approvalGates": 1,
+      "decisionQuestions": 7
+    },
+    "questionQuality": {
+      "withConcreteOptions": 7,
+      "withRecommendation": 7,
+      "withRepositoryEvidence": 7,
+      "withSingleAxis": 7,
+      "recommendationAccepted": 7,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 1,
+      "axisPurityRate": 1,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 4,
+      "depthTotal": 5,
+      "depthRate": 0.8,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "case-insensitive-fs"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session clearly declared a bounded path, used repository-specific evidence, avoided forbidden questions, and implemented the user’s selected collision, locking, rollback, and reporting behavior. It missed the explicit self-inclusion and case-insensitive-filesystem decisions, and best-effort rollback plus validation/application races do not strictly guarantee either acceptance requirement.",
+    "round": 3
+  },
+  {
+    "arm": "settle-text",
+    "label": "settle (text)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 15555,
+      "wallClockMs": 426211,
+      "tokens": {
+        "input": 662979,
+        "output": 18932,
+        "total": 681911
+      }
+    },
+    "interaction": {
+      "agentTurns": 8,
+      "userMessages": 7,
+      "nativeRounds": 0,
+      "humanInputs": 7,
+      "questionsAsked": 14,
+      "approvalGates": 1,
+      "decisionQuestions": 13
+    },
+    "questionQuality": {
+      "withConcreteOptions": 13,
+      "withRecommendation": 13,
+      "withRepositoryEvidence": 7,
+      "withSingleAxis": 12,
+      "recommendationAccepted": 12,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0.538,
+      "axisPurityRate": 0.923,
+      "recommendationAccuracy": 0.923
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 5,
+      "decisionsLost": 1,
+      "survivalRate": 0.833,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session declared the bounded path up front, gathered many concrete safety and recovery decisions, and visibly implemented most selected policies without asking forbidden repository-settled questions. It over-expanded into an architectural transaction system, missed case-insensitive filesystem and preview decisions, and the implementation does not literally guarantee unchanged files after every failure or prevent overwrite races from external writers.",
+    "round": 4
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 281130,
+      "tokens": {
+        "input": 457832,
+        "output": 8135,
+        "total": 465967
+      }
+    },
+    "interaction": {
+      "agentTurns": 8,
+      "userMessages": 7,
+      "nativeRounds": 0,
+      "humanInputs": 7,
+      "questionsAsked": 12,
+      "approvalGates": 1,
+      "decisionQuestions": 11
+    },
+    "questionQuality": {
+      "withConcreteOptions": 11,
+      "withRecommendation": 11,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 8,
+      "recommendationAccepted": 9,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.727,
+      "recommendationAccuracy": 0.818
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 2,
+      "depthTotal": 5,
+      "depthRate": 0.4,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "failure-reporting",
+        "preview-mode"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "case-insensitive-fs"
+      ],
+      "closureRate": 0.5,
+      "forbiddenAsked": [
+        "stream-convention"
+      ],
+      "forbiddenCount": 1
+    },
+    "outcome": {
+      "decisionsHonored": 4,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly settled collision handling, practical rollback, and failure diagnostics, and those choices are visible in the implementation. It nevertheless missed self-inclusion, transient collisions, repeat-run behavior, and case-only filesystem behavior; the implementation also cannot strictly guarantee either acceptance goal because rollback can fail and the existence-check/rename sequence has an overwrite race on filesystems where rename replaces an existing target.",
+    "round": 0
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 545962,
+      "tokens": {
+        "input": 777297,
+        "output": 18838,
+        "total": 796135
+      }
+    },
+    "interaction": {
+      "agentTurns": 7,
+      "userMessages": 6,
+      "nativeRounds": 0,
+      "humanInputs": 6,
+      "questionsAsked": 15,
+      "approvalGates": 1,
+      "decisionQuestions": 14
+    },
+    "questionQuality": {
+      "withConcreteOptions": 14,
+      "withRecommendation": 14,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 12,
+      "recommendationAccepted": 10,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.857,
+      "recommendationAccuracy": 0.714
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 2,
+      "depthTotal": 5,
+      "depthRate": 0.4,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "transient-collision",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "idempotency",
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.5,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 4,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "a run that cannot complete leaves every file unchanged",
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 5,
+      "distinctApproaches": 5,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session exhaustively negotiated transactional execution, crash recovery, locking, and diagnostics, and the implementation visibly reflects those choices. It over-expanded an expected bounded fix into an architectural journal-and-recovery system, used a final approval gate, and missed self-inclusion, repeat-run idempotency, case-only filesystem behavior, and preview policy.",
+    "round": 1
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 351081,
+      "tokens": {
+        "input": 610508,
+        "output": 13148,
+        "total": 623656
+      }
+    },
+    "interaction": {
+      "agentTurns": 6,
+      "userMessages": 5,
+      "nativeRounds": 0,
+      "humanInputs": 5,
+      "questionsAsked": 12,
+      "approvalGates": 1,
+      "decisionQuestions": 11
+    },
+    "questionQuality": {
+      "withConcreteOptions": 10,
+      "withRecommendation": 11,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 9,
+      "recommendationAccepted": 10,
+      "optionRate": 0.909,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.818,
+      "recommendationAccuracy": 0.909
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 2,
+      "depthTotal": 5,
+      "depthRate": 0.4,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "idempotency",
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.625,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 5,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "a run that cannot complete leaves every file unchanged"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly specified collision handling, transaction rollback, and failure reporting, and the implementation visibly reflects those choices. It over-questioned implementation details without first declaring the expected bounded path, added a redundant final approval gate, and missed explicit treatment of repeat-run idempotency, case-insensitive filesystems, and preview policy. The check-then-rename sequence can still overwrite a target that appears between those operations on filesystems where rename replaces an existing destination, so the absolute no-overwrite requirement is not fully met.",
+    "round": 2
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 329265,
+      "tokens": {
+        "input": 436188,
+        "output": 10728,
+        "total": 446916
+      }
+    },
+    "interaction": {
+      "agentTurns": 5,
+      "userMessages": 4,
+      "nativeRounds": 0,
+      "humanInputs": 4,
+      "questionsAsked": 10,
+      "approvalGates": 1,
+      "decisionQuestions": 9
+    },
+    "questionQuality": {
+      "withConcreteOptions": 5,
+      "withRecommendation": 9,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 6,
+      "recommendationAccepted": 8,
+      "optionRate": 0.556,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.667,
+      "recommendationAccuracy": 0.889
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 2,
+      "depthTotal": 5,
+      "depthRate": 0.4,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "idempotency",
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.625,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 5,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly specified collision handling, rollback, and failure reporting, and the implementation visibly follows those choices. It over-questioned low-level failure details while missing idempotency, case-insensitive filesystems, and preview policy; moreover, the check-then-rename race can still overwrite a newly created target, so the absolute acceptance guarantees are not met.",
+    "round": 3
+  },
+  {
+    "arm": "grilling",
+    "label": "grilling (mattpocock)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 2054,
+      "wallClockMs": 480877,
+      "tokens": {
+        "input": 623732,
+        "output": 14690,
+        "total": 638422
+      }
+    },
+    "interaction": {
+      "agentTurns": 8,
+      "userMessages": 7,
+      "nativeRounds": 0,
+      "humanInputs": 7,
+      "questionsAsked": 20,
+      "approvalGates": 1,
+      "decisionQuestions": 19
+    },
+    "questionQuality": {
+      "withConcreteOptions": 18,
+      "withRecommendation": 19,
+      "withRepositoryEvidence": 3,
+      "withSingleAxis": 16,
+      "recommendationAccepted": 15,
+      "optionRate": 0.947,
+      "recommendationRate": 1,
+      "evidenceRate": 0.158,
+      "axisPurityRate": 0.842,
+      "recommendationAccuracy": 0.789
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "transient-collision",
+        "case-insensitive-fs",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "idempotency",
+        "preview-mode"
+      ],
+      "closureRate": 0.625,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 4,
+      "decisionsLost": 1,
+      "survivalRate": 0.8,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": []
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly elicited collision, rollback, and diagnostic behavior, and the implementation visibly attempts those choices. It missed self-inclusion, repeat-run idempotency, and preview policy, while the case-insensitive handling only covers Windows; moreover, the check-then-rename race can still overwrite a newly appeared target and rollback failure can leave changes behind, so neither absolute acceptance guarantee is met.",
+    "round": 4
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 194262,
+      "tokens": {
+        "input": 273055,
+        "output": 7629,
+        "total": 280684
+      }
+    },
+    "interaction": {
+      "agentTurns": 4,
+      "userMessages": 3,
+      "nativeRounds": 0,
+      "humanInputs": 3,
+      "questionsAsked": 3,
+      "approvalGates": 2,
+      "decisionQuestions": 1
+    },
+    "questionQuality": {
+      "withConcreteOptions": 1,
+      "withRecommendation": 1,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 1,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [
+        "idempotency",
+        "case-insensitive-fs"
+      ],
+      "missed": [
+        "self-inclusion",
+        "transient-collision",
+        "preview-mode"
+      ],
+      "closureRate": 0.625,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 7,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "a run that cannot complete leaves every file unchanged",
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session correctly declared a bounded path, elicited the central collision policy, and adapted when the user identified the move-time atomicity gap. It implemented and tested staging, rollback, idempotency, case handling, and detailed failure reports, but silently chose self-inclusion and transient-collision semantics and never addressed the preview-mode decision.",
+    "round": 0
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 109703,
+      "tokens": {
+        "input": 237623,
+        "output": 3953,
+        "total": 241576
+      }
+    },
+    "interaction": {
+      "agentTurns": 3,
+      "userMessages": 2,
+      "nativeRounds": 0,
+      "humanInputs": 2,
+      "questionsAsked": 2,
+      "approvalGates": 1,
+      "decisionQuestions": 1
+    },
+    "questionQuality": {
+      "withConcreteOptions": 1,
+      "withRecommendation": 1,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 0,
+      "recommendationAccepted": 1,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [
+        "idempotency",
+        "case-insensitive-fs"
+      ],
+      "missed": [
+        "self-inclusion",
+        "transient-collision",
+        "preview-mode"
+      ],
+      "closureRate": 0.625,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 4,
+      "decisionsLost": 1,
+      "survivalRate": 0.8,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session clearly chose a collision policy and implemented aggregate preflight reporting, case-insensitive checks, and second-run no-ops. It missed self-inclusion and transient-collision semantics, and the implementation is not fully atomic because non-collision failures during the rename loop can still leave earlier renames applied.",
+    "round": 1
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 331033,
+      "tokens": {
+        "input": 439369,
+        "output": 12194,
+        "total": 451563
+      }
+    },
+    "interaction": {
+      "agentTurns": 11,
+      "userMessages": 10,
+      "nativeRounds": 0,
+      "humanInputs": 10,
+      "questionsAsked": 10,
+      "approvalGates": 5,
+      "decisionQuestions": 5
+    },
+    "questionQuality": {
+      "withConcreteOptions": 4,
+      "withRecommendation": 4,
+      "withRepositoryEvidence": 1,
+      "withSingleAxis": 4,
+      "recommendationAccepted": 3,
+      "optionRate": 0.8,
+      "recommendationRate": 0.8,
+      "evidenceRate": 0.2,
+      "axisPurityRate": 0.8,
+      "recommendationAccuracy": 0.75
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "a run that cannot complete leaves every file unchanged",
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "none",
+      "pathExpected": "bounded",
+      "pathCorrect": false,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session thoroughly developed crash-safe, no-overwrite transactions and visibly carried the agreed collision, recovery, idempotency, and reporting behavior into the design and implementation plan. It asked several late approval gates, declared no sizing before the first question, and never addressed case-insensitive filesystems or preview behavior.",
+    "round": 2
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 140272,
+      "tokens": {
+        "input": 288183,
+        "output": 5108,
+        "total": 293291
+      }
+    },
+    "interaction": {
+      "agentTurns": 4,
+      "userMessages": 3,
+      "nativeRounds": 0,
+      "humanInputs": 3,
+      "questionsAsked": 3,
+      "approvalGates": 1,
+      "decisionQuestions": 2
+    },
+    "questionQuality": {
+      "withConcreteOptions": 2,
+      "withRecommendation": 2,
+      "withRepositoryEvidence": 0,
+      "withSingleAxis": 1,
+      "recommendationAccepted": 2,
+      "optionRate": 1,
+      "recommendationRate": 1,
+      "evidenceRate": 0,
+      "axisPurityRate": 0.5,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 2,
+      "coreTotal": 3,
+      "coreRate": 0.667,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "self-inclusion",
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.625,
+      "forbiddenAsked": [],
+      "forbiddenCount": 0
+    },
+    "outcome": {
+      "decisionsHonored": 5,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 0,
+      "distinctApproaches": 0,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": false,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session clearly sized the work, asked focused collision and transient-occupancy questions, and implemented aggregate preflight reporting with no new dependencies. It missed self-inclusion, case-insensitive filesystem semantics, and preview policy, and the preflight-only implementation does not guarantee rollback if a non-collision rename fails after earlier moves.",
+    "round": 3
+  },
+  {
+    "arm": "superpowers-brainstorming",
+    "label": "brainstorming (obra/superpowers)",
+    "channel": "text",
+    "aborted": null,
+    "cost": {
+      "instructionChars": 17537,
+      "wallClockMs": 294226,
+      "tokens": {
+        "input": 420791,
+        "output": 10107,
+        "total": 430898
+      }
+    },
+    "interaction": {
+      "agentTurns": 12,
+      "userMessages": 12,
+      "nativeRounds": 0,
+      "humanInputs": 12,
+      "questionsAsked": 12,
+      "approvalGates": 5,
+      "decisionQuestions": 7
+    },
+    "questionQuality": {
+      "withConcreteOptions": 7,
+      "withRecommendation": 4,
+      "withRepositoryEvidence": 2,
+      "withSingleAxis": 6,
+      "recommendationAccepted": 4,
+      "optionRate": 1,
+      "recommendationRate": 0.571,
+      "evidenceRate": 0.286,
+      "axisPurityRate": 0.857,
+      "recommendationAccuracy": 1
+    },
+    "coverage": {
+      "materialCount": 8,
+      "coreSettled": 3,
+      "coreTotal": 3,
+      "coreRate": 1,
+      "depthSettled": 3,
+      "depthTotal": 5,
+      "depthRate": 0.6,
+      "asked": [
+        "collision-policy",
+        "atomicity",
+        "self-inclusion",
+        "transient-collision",
+        "idempotency",
+        "failure-reporting"
+      ],
+      "resolvedFromRepository": [],
+      "userVolunteered": [],
+      "missed": [
+        "case-insensitive-fs",
+        "preview-mode"
+      ],
+      "closureRate": 0.75,
+      "forbiddenAsked": [
+        "undo-feature"
+      ],
+      "forbiddenCount": 1
+    },
+    "outcome": {
+      "decisionsHonored": 6,
+      "decisionsLost": 0,
+      "survivalRate": 1,
+      "mustPreserveKept": [
+        "no new runtime dependencies",
+        "single-directory, non-recursive behavior",
+        "user-facing output on stdout and diagnostics on stderr"
+      ],
+      "mustAchieveMet": [
+        "a run that cannot complete leaves every file unchanged",
+        "no existing file is ever overwritten"
+      ]
+    },
+    "process": {
+      "pathStated": "bounded",
+      "pathExpected": "bounded",
+      "pathCorrect": true,
+      "approachesPresented": 3,
+      "distinctApproaches": 3,
+      "fakeAlternatives": 0,
+      "approachDecisionAsked": true,
+      "approachBeforeDetails": false
+    },
+    "notes": "The session eventually produced a detailed design and implementation plan reflecting most confirmed safety requirements, with clear no-overwrite, rollback, recovery, and reporting contracts. It asked many late approval gates, revisited the repository-set no-journal decision as a user choice, missed case-insensitive filesystem and preview policy, and did not actually implement the plan after the user explicitly requested implementation.",
+    "round": 4
+  }
+]

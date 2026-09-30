@@ -1,0 +1,82 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Q1 explicitly asked what should happen when a target already exists, and the user chose refusal of the whole run with no overwrite or skipping."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Q5 explicitly asked whether runtime failures must roll back completed renames, and the user answered yes."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "Q8 asked whether source-to-self mappings should be harmless no-ops, and the user agreed they should not be executed."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "Q2 explicitly asked whether a target vacated by another planned rename should be allowed, and the user accepted chains and swaps."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "The agent never asked what a second identical run should do, despite README.md documenting frequent accidental repeat runs."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question addressed case-only renames or collision semantics on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "Q4, Q6, Q7, and Q10 asked about report contents, streams, exit status, and rollback-failure details."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session never settled whether preview or confirmation should be part of the fix or whether safety could depend on it."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 12,
+    "approvalGates": 1,
+    "withSingleAxis": 9,
+    "recommendationAccepted": 10,
+    "withConcreteOptions": 10,
+    "withRecommendation": 11,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged"
+    ]
+  },
+  "notes": "The session thoroughly specified collision handling, transaction rollback, and failure reporting, and the implementation visibly reflects those choices. It over-questioned implementation details without first declaring the expected bounded path, added a redundant final approval gate, and missed explicit treatment of repeat-run idempotency, case-insensitive filesystems, and preview policy. The check-then-rename sequence can still overwrite a target that appears between those operations on filesystems where rename replaces an existing destination, so the absolute no-overwrite requirement is not fully met.",
+  "rubricMaterialCount": 8
+}

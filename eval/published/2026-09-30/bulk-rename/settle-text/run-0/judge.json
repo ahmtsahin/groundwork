@@ -1,0 +1,81 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The first question explicitly offered rejecting the whole batch, skipping conflicts, or advancing to unused numbers, and the user chose rejection."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The user chose “Reject the whole batch before changing anything” and later chose restoration attempts for failures after execution starts."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "The agent asked how already-correct identity steps should be handled, and the user chose to ignore them and make a fully satisfied run a silent no-op."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The “Moving occupant” question asked whether a target occupied by another source in the same batch should be allowed, and the user chose staging."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The agent explicitly asked what an identical repeated run should do, and the user chose a silent successful no-op."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question, repository resolution, or implementation discussion addressed case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The agent asked whether rejected plans should emit stdout and the user chose no stdout, clash diagnostics on stderr, and an unsuccessful exit."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session changed plan lines from a pre-execution preview to post-success output without asking whether preview or confirmation should remain part of the workflow."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 9,
+    "approvalGates": 1,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 8,
+    "withConcreteOptions": 8,
+    "withRecommendation": 8,
+    "withRepositoryEvidence": 4
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session declared the correct bounded path, investigated most safety-relevant behavior, avoided forbidden questions, and visibly implemented the user’s selected policies. It missed case-insensitive filesystem semantics and silently removed preview behavior; moreover, best-effort rollback and check-then-rename races do not literally guarantee that every failed run leaves all files unchanged or that an existing file is never overwritten.",
+  "rubricMaterialCount": 8
+}

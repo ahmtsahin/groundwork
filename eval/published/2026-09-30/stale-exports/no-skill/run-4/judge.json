@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "missed",
+      "justification": "The agent silently applied revision invalidation to every export invocation, without asking whether ad hoc and nightly freshness should differ."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "missed",
+      "justification": "No question or statement established an acceptable maximum age for ad hoc export data."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "The existing cache comment says it keeps the nightly batch under ten minutes, and the agent retained the six-hour cache for unchanged source data."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "missed",
+      "justification": "The agent added no explicit CLI signal and did not ask whether freshness should use a batch flag, ad hoc flag, environment variable, or subcommand."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "Neither the message nor changes define whether an export must represent one consistent source revision."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The implementation reads revisions before and after loading rows but never defines or asks what should happen if the source changes during that interval."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The agent unilaterally chose modification time plus size, as stated in its final message, without repository proof or a user decision."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "No question, message, or code change specifies CLI output and exit behavior when valid data cannot be read."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "No retry behavior or retry bound was discussed or implemented."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "nightly-budget"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The implementation preserved the pinned CSV shape, avoided dependencies, retained caching, and added a regression test for source changes. However, the agent declared no bounded path, asked no questions, and silently chose the global freshness policy and mtime-plus-size detection while leaving every depth-tier behavior unspecified.",
+  "rubricMaterialCount": 9
+}

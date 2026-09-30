@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first native question asked which exports must observe upstream updates, and the user chose “Ad hoc default.”"
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The freshness question offered normal runs that observe current source data, and the user selected that behavior instead of the six-hour cached behavior."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The freshness-policy options explicitly contrasted changing nightly behavior with preserving cached nightly semantics, and the user chose explicit cached mode for nightly use."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The “Batch mode” question asked how nightly callers select caching, and the user chose the `--cached` flag."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "The “Mid-run” question asked which snapshot an invocation returns, and the user chose the complete snapshot present when reading began."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The “Mid-run” question directly asked what happens when a newer `orders.json` appears during an export, and the user chose to finish the started snapshot."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The agent never asked whether source changes should be detected by metadata, content hash, or bypassing cache validation, and silently implemented `mtimeMs` as `sourceVersion`."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The “Bad source” question asked what a fresh export emits on missing, unreadable, or malformed input, and the user chose nonzero failure without stale CSV."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The “Mid-run” options explicitly contrasted finishing the initial snapshot with detecting a change and retrying, and the user chose the no-retry started-snapshot behavior."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 7,
+    "approvalGates": 1,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 5,
+    "withConcreteOptions": 6,
+    "withRecommendation": 6,
+    "withRepositoryEvidence": 6
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session correctly declared a bounded path, used repository-specific evidence in every substantive question, and implemented the selected default-fresh versus explicit-cached contract. It also covered concurrency, failure, and retry behavior deeply, but never surfaced the material choice of mtime/size versus hashing versus bypassing cache validation; the implementation silently chose mtime alone.",
+  "rubricMaterialCount": 9
+}

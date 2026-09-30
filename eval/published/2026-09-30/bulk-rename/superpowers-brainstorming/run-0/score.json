@@ -1,0 +1,88 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 194262,
+    "tokens": {
+      "input": 273055,
+      "output": 7629,
+      "total": 280684
+    }
+  },
+  "interaction": {
+    "agentTurns": 4,
+    "userMessages": 3,
+    "nativeRounds": 0,
+    "humanInputs": 3,
+    "questionsAsked": 3,
+    "approvalGates": 2,
+    "decisionQuestions": 1
+  },
+  "questionQuality": {
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [
+      "idempotency",
+      "case-insensitive-fs"
+    ],
+    "missed": [
+      "self-inclusion",
+      "transient-collision",
+      "preview-mode"
+    ],
+    "closureRate": 0.625,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 7,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session correctly declared a bounded path, elicited the central collision policy, and adapted when the user identified the move-time atomicity gap. It implemented and tested staging, rollback, idempotency, case handling, and detailed failure reports, but silently chose self-inclusion and transient-collision semantics and never addressed the preview-mode decision."
+}

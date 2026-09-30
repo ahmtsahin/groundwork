@@ -1,0 +1,87 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 109703,
+    "tokens": {
+      "input": 237623,
+      "output": 3953,
+      "total": 241576
+    }
+  },
+  "interaction": {
+    "agentTurns": 3,
+    "userMessages": 2,
+    "nativeRounds": 0,
+    "humanInputs": 2,
+    "questionsAsked": 2,
+    "approvalGates": 1,
+    "decisionQuestions": 1
+  },
+  "questionQuality": {
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [
+      "idempotency",
+      "case-insensitive-fs"
+    ],
+    "missed": [
+      "self-inclusion",
+      "transient-collision",
+      "preview-mode"
+    ],
+    "closureRate": 0.625,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 4,
+    "decisionsLost": 1,
+    "survivalRate": 0.8,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session clearly chose a collision policy and implemented aggregate preflight reporting, case-insensitive checks, and second-run no-ops. It missed self-inclusion and transient-collision semantics, and the implementation is not fully atomic because non-collision failures during the rename loop can still leave earlier renames applied."
+}

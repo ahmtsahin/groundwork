@@ -1,0 +1,36 @@
+{
+  "arm": "no-skill",
+  "host": "codex",
+  "scenario": "stale-exports",
+  "model": "gpt-5.6-sol",
+  "threadId": "01a0ef50-1f4b-7d20-a5ee-e1b95c066967",
+  "startedAt": "2026-09-29T22:36:40.072Z",
+  "wallClockMs": 131623,
+  "aborted": null,
+  "turns": [
+    {
+      "index": 0,
+      "kind": "initial",
+      "ms": 128006,
+      "exitCode": 0,
+      "timedOut": false,
+      "usage": {
+        "input_tokens": 185120,
+        "output_tokens": 3214,
+        "total_tokens": 0
+      },
+      "errors": [],
+      "eventCount": 23,
+      "finalMessage": "Fixed stale exports while preserving cache performance and CSV compatibility.\n\nChanges:\n\n- Cache entries are invalidated when `data/orders.json` is newer than the cached data.\n- Existing six-hour TTL remains as a fallback.\n- CSV column order remains unchanged.\n- Added a regression test covering source rewrites.\n\nVerification: both tests pass when run directly with `node test/exporter.test.js`. The sandbox prevented `node --test` from spawning its worker process (`EPERM`).",
+      "textQuestionCount": 0,
+      "reportedUsage": {
+        "input_tokens": 185120,
+        "output_tokens": 3214,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "userReplies": [],
+  "nativeRounds": [],
+  "usageReporting": "cumulative"
+}

@@ -1,0 +1,36 @@
+{
+  "arm": "no-skill",
+  "host": "codex",
+  "scenario": "bulk-rename",
+  "model": "gpt-5.6-sol",
+  "threadId": "01a0efba-8443-7f31-b57f-c1a2a90f4970",
+  "startedAt": "2026-09-30T00:32:53.195Z",
+  "wallClockMs": 58121,
+  "aborted": null,
+  "turns": [
+    {
+      "index": 0,
+      "kind": "initial",
+      "ms": 54528,
+      "exitCode": 0,
+      "timedOut": false,
+      "usage": {
+        "input_tokens": 121310,
+        "output_tokens": 2251,
+        "total_tokens": 0
+      },
+      "errors": [],
+      "eventCount": 19,
+      "finalMessage": "Fixed the partial-renaming bug.\n\n- Added a full collision preflight before any files are renamed.\n- Duplicate or existing targets throw `EEXIST` without modifying the directory.\n- Same-name renames are safely skipped.\n- Added a regression test and updated the README.\n\nTests: 2 passed using in-process Node test isolation.",
+      "textQuestionCount": 0,
+      "reportedUsage": {
+        "input_tokens": 121310,
+        "output_tokens": 2251,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "userReplies": [],
+  "nativeRounds": [],
+  "usageReporting": "cumulative"
+}

@@ -1,0 +1,87 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 331033,
+    "tokens": {
+      "input": 439369,
+      "output": 12194,
+      "total": 451563
+    }
+  },
+  "interaction": {
+    "agentTurns": 11,
+    "userMessages": 10,
+    "nativeRounds": 0,
+    "humanInputs": 10,
+    "questionsAsked": 10,
+    "approvalGates": 5,
+    "decisionQuestions": 5
+  },
+  "questionQuality": {
+    "withConcreteOptions": 4,
+    "withRecommendation": 4,
+    "withRepositoryEvidence": 1,
+    "withSingleAxis": 4,
+    "recommendationAccepted": 3,
+    "optionRate": 0.8,
+    "recommendationRate": 0.8,
+    "evidenceRate": 0.2,
+    "axisPurityRate": 0.8,
+    "recommendationAccuracy": 0.75
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 6,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly developed crash-safe, no-overwrite transactions and visibly carried the agreed collision, recovery, idempotency, and reporting behavior into the design and implementation plan. It asked several late approval gates, declared no sizing before the first question, and never addressed case-insensitive filesystems or preview behavior."
+}

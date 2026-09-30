@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The user chose “Cancel batch” when asked what should happen if a final target belongs to an unrelated existing file."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The apply-failure question asked whether earlier successful renames should be rolled back or retained, and the user chose rollback."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The agent observed that an existing photo-001.jpg was matched and silently retained that behavior, but never directly settled whether already-conforming files belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The final contract confirmation explicitly proposed allowing targets occupied by inputs in the same plan, and the user selected “Implement it.”"
+    },
+    {
+      "id": "idempotency",
+      "disposition": "resolved_from_repository",
+      "justification": "The agent settled repeated runs from deterministic matching and the from-equals-to no-op behavior, recorded under “Repeated input,” without asking the user."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question or repository resolution addressed case-only renames across case-insensitive filesystems, and the implementation silently special-cased only win32."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The rejection-output question asked whether stdout should omit or print the proposed plan, and the chosen option specified stderr diagnostics and a nonzero exit."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "asked",
+      "justification": "The rejection-output choice and final contract confirmation settled that moves are printed only after success rather than serving as a pre-application preview."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 6,
+    "approvalGates": 1,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 5,
+    "withConcreteOptions": 5,
+    "withRecommendation": 5,
+    "withRepositoryEvidence": 4
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session clearly declared a bounded path, used repository-specific evidence, and asked focused questions about collision handling, rollback, locking, and output. It overreached into locking without directly settling self-inclusion or case-insensitive filesystem behavior; moreover, best-effort rollback does not literally guarantee that every failed run leaves every file unchanged.",
+  "rubricMaterialCount": 8
+}

@@ -1,0 +1,81 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Q1 asked what to do when a target exists, and the user chose to abort the entire run, report every conflict, and never overwrite."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Q5 and Q9 asked about rollback for execution-time failures and its realistic guarantee boundary; the user required best-effort rollback with explicit rollback-failure reporting."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "Q7 addressed exact source-to-same-name mappings, but nobody decided whether files already matching the overall target naming scheme should be included in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "Q2 explicitly asked whether rename chains should be rejected, and the user chose the strict rule that rejects them."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "The session never asked what a second identical invocation does; Q18 only covered already-produced empty or all-exact-no-op plans."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "asked",
+      "justification": "Q12 asked how case-only names should behave on case-insensitive filesystems, and the user chose to treat them as clashes."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "Q3, Q4, Q10, Q15, Q16, Q17, and Q19 settled output streams, diagnostic content and ordering, and the non-zero status."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session neither asked whether preview or confirmation belonged in the fix nor settled whether safety could depend on operator review."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 20,
+    "approvalGates": 1,
+    "withSingleAxis": 16,
+    "recommendationAccepted": 15,
+    "withConcreteOptions": 18,
+    "withRecommendation": 19,
+    "withRepositoryEvidence": 3
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "decisionsLost": [
+      "case-insensitive-fs"
+    ],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session thoroughly elicited collision, rollback, and diagnostic behavior, and the implementation visibly attempts those choices. It missed self-inclusion, repeat-run idempotency, and preview policy, while the case-insensitive handling only covers Windows; moreover, the check-then-rename race can still overwrite a newly appeared target and rollback failure can leave changes behind, so neither absolute acceptance guarantee is met.",
+  "rubricMaterialCount": 8
+}

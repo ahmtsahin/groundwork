@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The agent asked whether to abort, skip colliding files, or choose alternative names, and the user selected abort."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The first option explicitly proposed aborting before renaming anything, versus the partial-application skip option, and the user selected it."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "Neither party decided whether files already matching the target naming scheme belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "missed",
+      "justification": "The session never distinguished an unrelated occupied target from one occupied by a source that would be renamed later in the same run."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "user_volunteered",
+      "justification": "The user added unprompted: \"make sure running the same command twice does nothing the second time.\""
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "user_volunteered",
+      "justification": "The user added unprompted: \"treat names that differ only by upper/lower case as a clash on this machine.\""
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The agent's design approval question proposed listing every collision on stderr and exiting nonzero, and the user answered yes."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session never discussed whether preview or confirmation should be included or relied upon."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 2,
+    "approvalGates": 1,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "idempotency",
+      "case-insensitive-fs",
+      "failure-reporting"
+    ],
+    "decisionsLost": [
+      "atomicity"
+    ],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session clearly chose a collision policy and implemented aggregate preflight reporting, case-insensitive checks, and second-run no-ops. It missed self-inclusion and transient-collision semantics, and the implementation is not fully atomic because non-collision failures during the rename loop can still leave earlier renames applied.",
+  "rubricMaterialCount": 8
+}

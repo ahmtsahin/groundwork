@@ -1,0 +1,84 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 480877,
+    "tokens": {
+      "input": 623732,
+      "output": 14690,
+      "total": 638422
+    }
+  },
+  "interaction": {
+    "agentTurns": 8,
+    "userMessages": 7,
+    "nativeRounds": 0,
+    "humanInputs": 7,
+    "questionsAsked": 20,
+    "approvalGates": 1,
+    "decisionQuestions": 19
+  },
+  "questionQuality": {
+    "withConcreteOptions": 18,
+    "withRecommendation": 19,
+    "withRepositoryEvidence": 3,
+    "withSingleAxis": 16,
+    "recommendationAccepted": 15,
+    "optionRate": 0.947,
+    "recommendationRate": 1,
+    "evidenceRate": 0.158,
+    "axisPurityRate": 0.842,
+    "recommendationAccuracy": 0.789
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "case-insensitive-fs",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "idempotency",
+      "preview-mode"
+    ],
+    "closureRate": 0.625,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 4,
+    "decisionsLost": 1,
+    "survivalRate": 0.8,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly elicited collision, rollback, and diagnostic behavior, and the implementation visibly attempts those choices. It missed self-inclusion, repeat-run idempotency, and preview policy, while the case-insensitive handling only covers Windows; moreover, the check-then-rename race can still overwrite a newly appeared target and rollback failure can leave changes behind, so neither absolute acceptance guarantee is met."
+}

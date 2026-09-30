@@ -1,0 +1,442 @@
+ADDED docs/superpowers/plans/2026-09-30-durable-rename-transactions-plan.md
+# Durable Rename Transactions Implementation Plan
+
+## Goal
+
+Replace sequential `renameSync` calls with a recoverable, no-overwrite
+hard-link transaction. A run must validate all known conflicts before changing
+source names, roll back runtime failures, recover interrupted work on the next
+invocation, and refuse safely when recovery or required filesystem durability
+cannot be established.
+
+## Constraints
+
+- ES modules and Node built-ins only.
+- Tests run with `node --test`.
+- User-facing results go to stdout; diagnostics go to stderr.
+- No operation may overwrite an existing path.
+- Unknown or externally changed files must not be deleted.
+- A filesystem without hard-link and durable-journal support is rejected
+  before any source name moves.
+
+## Task 1: Isolate matching from transaction metadata
+
+Files:
+
+- Modify `src/match.js`.
+- Modify `test/rename.test.js` or add `test/match.test.js`.
+
+Steps:
+
+1. Add failing tests showing that reserved journal, owner, and probe names are
+   excluded even when the user pattern would otherwise match them.
+2. Define and export a narrow reserved-name predicate or prefix constant used
+   by both matching and transaction code.
+3. Filter reserved entries before wildcard matching and sorting.
+4. Run `node --test` and confirm the new tests pass without changing ordinary
+   matching behavior.
+
+## Task 2: Add structured plan validation
+
+Files:
+
+- Modify `src/rename.js`.
+- Expand `test/rename.test.js`.
+
+Steps:
+
+1. Add failing tests for exact self-renames, mixed no-op plans, multiple
+   existing destinations, duplicate destinations, and missing sources.
+2. Add a validation function that returns executable steps separately from
+   no-op steps and captures each source's stable filesystem identity.
+3. Collect all conflicts before throwing a structured preflight error. Include
+   every affected destination in deterministic order.
+4. Ensure validation performs no filesystem mutation.
+5. Run `node --test` and confirm all validation tests pass.
+
+## Task 3: Build the durable append-only journal
+
+Files:
+
+- Create `src/transaction.js`.
+- Add `test/transaction.test.js`.
+
+Steps:
+
+1. Add tests for exclusive journal creation, parseable header and event
+   records, record flushing, directory-entry flushing, corrupt/truncated tail
+   handling, commit recognition, and metadata cleanup.
+2. Define the journal schema: versioned header with transaction ID, owner
+   identity, complete validated plan, and source identities; newline-delimited
+   intent, completion, rollback, recovery, and commit events.
+3. Implement append-and-sync helpers. Keep the journal descriptor controlled
+   by one transaction-store object and close it on every exit path.
+4. Implement required directory sync and treat unsupported or failed sync as a
+   capability error rather than silently weakening durability.
+5. Parse only fully terminated journal records. Reject an invalid header or
+   invalid non-tail record as unsafe recovery requiring operator attention.
+6. Run the transaction tests and the full suite.
+
+## Task 4: Probe filesystem capabilities without moving sources
+
+Files:
+
+- Modify `src/transaction.js`.
+- Expand `test/transaction.test.js`.
+
+Steps:
+
+1. Add tests that inject hard-link, file-sync, directory-sync, and probe-cleanup
+   failures and assert that no source path changes.
+2. Create uniquely named probe files with exclusive-create semantics inside
+   the target directory.
+3. Verify exclusive hard-link creation and prove that linking to an occupied
+   destination fails without replacing its contents.
+4. Verify journal file sync and directory-entry sync using the same primitives
+   required by a real transaction.
+5. Remove probe entries only after verifying their identities. Treat cleanup
+   failure as preflight refusal and report the leftover reserved names.
+6. Run the capability tests and full suite.
+
+## Task 5: Implement directory-scoped ownership
+
+Files:
+
+- Modify `src/transaction.js`.
+- Expand `test/transaction.test.js`.
+
+Steps:
+
+1. Add tests for exclusive acquisition, a demonstrably live owner, a dead
+   owner, indeterminate liveness, and stale metadata containing a committed
+   transaction.
+2. Record PID plus available process-start evidence and a random transaction
+   token in the durable header.
+3. Implement conservative owner checks: a live or indeterminate owner blocks;
+   only a demonstrably dead owner permits interrupted recovery.
+4. Create transaction metadata exclusively so simultaneous starters cannot
+   both acquire the directory.
+5. Make committed stale metadata enter cleanup, never rollback.
+6. Run ownership tests and the full suite.
+
+## Task 6: Implement no-overwrite transaction execution
+
+Files:
+
+- Modify `src/transaction.js`.
+- Modify `src/rename.js`.
+- Expand `test/transaction.test.js` and `test/rename.test.js`.
+
+Steps:
+
+1. Add failing happy-path tests and fault-injection tests at every boundary:
+   before link, after link, after link completion, before unlink, after unlink,
+   and before commit.
+2. Introduce a small injectable filesystem-operations interface for tests;
+   production defaults use synchronous Node filesystem calls.
+3. Before each visible change, append and flush its intent record.
+4. Create each destination with `linkSync`, which fails if the destination
+   exists. Verify source and destination identities before proceeding.
+5. Append and flush link completion; then append and flush unlink intent,
+   reverify both identities, remove the source, and flush completion.
+6. Durably append commit only after every step completes. Clean metadata after
+   commit; a cleanup failure remains recognizable as committed work.
+7. Route any pre-commit error into rollback and return a structured result that
+   distinguishes full rollback from incomplete recovery.
+8. Run focused tests and the complete suite.
+
+## Task 7: Implement rollback and interrupted recovery
+
+Files:
+
+- Modify `src/transaction.js`.
+- Expand `test/transaction.test.js`.
+
+Steps:
+
+1. Generate test fixtures representing a crash after every durable event and
+   every ambiguous filesystem state between an operation and its completion
+   record.
+2. Reconcile journal state with actual path identities rather than relying on
+   the final logged event.
+3. Process applied steps in reverse. Recreate a missing original with an
+   exclusive hard link only when the destination has the recorded identity.
+4. Remove a transaction-created destination only after the original is
+   present with the same recorded identity and the destination still matches.
+5. Continue scanning after an obstruction so every affected name is reported,
+   while performing only independently safe restoration steps.
+6. Preserve the journal for incomplete recovery. Mark recovery complete
+   durably and remove metadata only after all originals are restored.
+7. Test external files occupying original names, replaced destinations,
+   missing recorded files, repeated recovery attempts, and eventual recovery
+   after an obstruction is removed.
+8. Run the full test suite.
+
+## Task 8: Integrate recovery and reporting into the CLI
+
+Files:
+
+- Modify `src/cli.js`.
+- Add `test/cli.test.js`.
+
+Steps:
+
+1. Add subprocess tests for stdout, stderr, and exit status for success,
+   all-no-op, preflight conflicts, active transaction, successful rollback,
+   successful startup recovery, incomplete recovery, and unsupported
+   capability.
+2. Recover the target directory before matching or planning a new run.
+3. If recovery succeeds, report it and continue. If it is incomplete, print
+   every affected name to stderr, refuse the requested plan, and exit nonzero.
+4. Print only executable rename steps on successful application. Print
+   `no changes needed` when the validated executable plan is empty.
+5. On successful rollback, report the initiating failure and explicitly state
+   that no changes remained. Never use that wording for incomplete recovery.
+6. Install guarded `SIGINT` and `SIGTERM` handlers while a transaction is
+   active. Attempt rollback once, report its outcome, and exit with the
+   signal-appropriate nonzero status. Leave durable state for next-run
+   recovery if signal-time rollback cannot finish.
+7. Run CLI tests and the full suite.
+
+## Task 9: Document the new contract and verify end to end
+
+Files:
+
+- Modify `README.md`.
+- Review all files under `src/` and `test/` touched above.
+
+Steps:
+
+1. Replace the obsolete no-journal statement and known rough edge with the
+   durable recovery, no-overwrite, automatic-recovery, and active-process
+   behavior.
+2. Document that unsupported hard-link or journal durability causes safe
+   refusal, and explain how incomplete recovery blocks new work without
+   overwriting external files.
+3. Run `node --test`.
+4. Perform a manual CLI smoke test in a fresh temporary directory for normal
+   rename, repeated no-op invocation, multi-conflict refusal, and recovery from
+   a deliberately prepared interrupted journal.
+5. Confirm temporary transaction artifacts are absent after successful work
+   and intentionally retained after incomplete recovery.
+6. Review output streams: normal reports only on stdout; diagnostics only on
+   stderr.
+
+## Completion criteria
+
+- All tests pass using `node --test` with no third-party packages.
+- Known conflicts cause one complete report and zero source-name changes.
+- Every injected pre-commit failure either restores all originals or produces
+  an explicit, complete obstruction report while retaining recovery data.
+- Crash-state tests recover automatically on the next invocation.
+- No execution or recovery path overwrites a pre-existing name or removes a
+  file whose identity is not recorded and verified.
+- Unsupported durability refuses before any source name moves.
+- A live second invocation is rejected.
+- All-no-op runs print `no changes needed` and create no transaction.
+
+
+ADDED docs/superpowers/specs/2026-09-30-durable-rename-transactions-design.md
+# Durable Rename Transactions
+
+## Purpose
+
+`renamer` must never knowingly overwrite a file or leave a partially applied
+rename after a failure. Before starting a new rename, it must automatically
+recover any interrupted transaction in the target directory. If external
+changes prevent complete restoration, it must preserve those changes, report
+every affected name, retain the recovery data, and refuse the new rename.
+
+This design supersedes the README's version 1.1 decision not to keep a rename
+journal. Crash and termination recovery now require a durable, directory-local
+journal.
+
+## User-visible behavior
+
+- A complete plan is validated before any source name is removed.
+- A destination that already exists is a conflict unless its step maps a file
+  to itself. All conflicts are reported together and no files are changed.
+- Two or more sources planned for the same destination are conflicts.
+- Self-renames are harmless no-ops. If every step is a no-op, stdout says
+  `no changes needed` and no transaction is created.
+- A second process targeting a directory with a live renamer transaction
+  refuses immediately and reports that another transaction is active.
+- A runtime error triggers immediate rollback. When rollback succeeds, the
+  diagnostic reports the original error and clearly states that no changes
+  remained.
+- `SIGINT` and `SIGTERM` initiate rollback where the platform permits.
+  Uncatchable termination and machine or process crashes are recovered by the
+  next invocation.
+- An invocation that finds an interrupted transaction attempts recovery before
+  planning new work. It starts the requested rename only after full recovery.
+- An invocation that finds a durably committed transaction only finishes
+  metadata cleanup; it does not roll back the completed rename.
+- If recovery cannot restore an original name without overwriting an external
+  file, or finds an unexpected file identity, it reports every affected name,
+  retains the transaction data, and refuses new work.
+- Rename and no-change reports go to stdout. Conflicts, transaction failures,
+  recovery failures, and other diagnostics go to stderr and produce a nonzero
+  exit status.
+
+## Safety boundary
+
+No program can guarantee restoration while unrelated software concurrently
+changes the same names. `renamer` therefore never deletes or overwrites a path
+whose recorded filesystem identity does not match. When external changes make
+restoration unsafe, it reports incomplete recovery rather than claiming the
+directory is unchanged.
+
+The target filesystem must support hard links and the durable journal
+operations described below. `renamer` verifies both capabilities with
+disposable entries in the target directory before it removes any source name.
+If either capability is unavailable, it refuses the plan without moving any
+source.
+
+## Architecture
+
+The implementation has three responsibilities:
+
+- `src/rename.js` builds plans, validates destinations, removes no-op steps,
+  and coordinates transactions.
+- `src/transaction.js` owns transaction acquisition, journal persistence,
+  capability probes, hard-link execution, identity verification, commit,
+  rollback, and interrupted-transaction recovery.
+- `src/cli.js` recovers before starting new work and renders results and errors
+  on the appropriate output stream.
+
+Transaction metadata uses reserved names in the target directory. File
+matching always excludes those names so no pattern can select a journal,
+marker, or probe as an input.
+
+## Preflight
+
+Preflight runs after recovery and before transaction creation:
+
+1. Remove exact `from === to` steps from the executable plan.
+2. Validate that each source still exists and capture its filesystem identity.
+3. Collect every existing destination and every destination assigned to more
+   than one source. Report the full set if nonempty.
+4. Create disposable entries in the target directory to verify exclusive hard
+   linking, journal creation and flushing, and directory-entry durability.
+5. Remove all probe entries. A probe cleanup failure is itself a refusal.
+
+The journal is created with exclusive-create semantics only after these checks
+succeed. Failures in this phase cannot leave source files renamed.
+
+## Transaction ownership
+
+The durable transaction header records a unique transaction identifier and
+the owner's process identity. If a transaction exists and its recorded owner
+is demonstrably alive, another invocation refuses immediately. If the owner is
+not alive, the transaction is treated as interrupted and recovered. If owner
+liveness cannot be established safely, the tool conservatively refuses rather
+than risking interference with a live run.
+
+Transaction ownership is directory-scoped: only one renamer transaction may
+operate on a directory at a time.
+
+## Journal format and durability
+
+The journal is append-only. Its header contains the complete validated plan,
+the identity of every source, and the transaction identifier. Subsequent
+records describe intent and completion for each link, unlink, rollback, and
+commit operation.
+
+Before an operation that can change visible names, its intent record is
+written and flushed. Completion is appended and flushed afterward. Required
+directory entries are also flushed. The capability probe must demonstrate
+these operations on the current platform and filesystem; otherwise execution
+is refused.
+
+Recovery does not assume that the last completion record survived. It
+reconciles journal intent with the names and recorded file identities actually
+present on disk. This makes a crash between an operation and its completion
+record recoverable.
+
+A durable commit record is the transaction's decision point. Before it, an
+interrupted transaction is rolled back; after it, the rename is complete and
+recovery only removes leftover transaction metadata. This prevents a crash
+during post-commit cleanup from undoing a successful run.
+
+## Applying a rename
+
+Each executable step uses the following sequence:
+
+1. Flush an intent-to-link record.
+2. Create `to` with an exclusive hard link to `from`. Link creation fails if
+   `to` appears during the run and cannot overwrite it.
+3. Verify and flush link completion.
+4. Flush an intent-to-remove-source record.
+5. Verify that both names still identify the recorded file, then remove
+   `from`.
+6. Flush source-removal completion.
+
+After all steps complete, the transaction is durably marked committed. Only
+then is its metadata removed. Hard linking keeps file content and inode-backed
+metadata intact and avoids copying large image files.
+
+## Rollback and recovery
+
+Rollback processes applied steps in reverse order. For each step it:
+
+1. Reconciles the journal with the current identities of `from` and `to`.
+2. If `from` is missing and `to` is the recorded file, recreates `from` using
+   an exclusive hard link. It never overwrites an existing `from`.
+3. After verifying that `from` is restored and both names identify the
+   recorded file, removes the transaction-created `to`.
+4. Flushes intent and completion records around each change.
+
+If both names already represent the recorded file, recovery may safely remove
+the transaction-created destination after identity verification. If a name is
+occupied by another identity, a required recorded file is absent, or a durable
+operation fails, recovery records and reports that affected name and leaves
+the journal in place. It continues checking other steps so the final report
+contains every known obstruction, but it performs only operations proven safe.
+
+A fully restored transaction is marked recovered durably and its metadata is
+removed. A partially restored transaction continues to block new renames and
+can be retried by a later invocation after the external obstruction is
+resolved.
+
+## Error reporting
+
+Errors are structured internally so the CLI can render a clear category,
+summary, and list of affected names. Reports distinguish:
+
+- preflight conflicts, followed by confirmation that no files were changed;
+- unsupported hard-link or journal durability, followed by confirmation that
+  no source was moved;
+- execution failure with successful rollback, followed by confirmation that
+  no changes remained;
+- active transaction refusal; and
+- incomplete recovery, listing every known obstruction and explicitly stating
+  that the directory was not fully restored and no new rename was attempted.
+
+The tool must not print `no changes needed` for a failed or blocked operation.
+
+## Testing
+
+Tests use isolated temporary directories and Node's built-in test runner. They
+cover:
+
+- ordinary successful renames;
+- multiple existing destinations reported together with no changes;
+- duplicate planned destinations;
+- all-no-op and mixed no-op plans;
+- exclusion of reserved metadata and probe names from matching;
+- refusal by hard-link and durability capability probes before source changes;
+- failures injected after destination linking and after source removal, with
+  complete rollback;
+- interrupted journals at every persisted state, followed by recovery;
+- termination recovery behavior represented by persisted crash states;
+- externally occupied original names and identity mismatches, proving that
+  recovery neither overwrites nor deletes unfamiliar files;
+- reporting of all recovery obstructions and preservation of the journal;
+- refusal while the recorded owner is alive or liveness is indeterminate;
+- retry and cleanup after a previously incomplete recovery;
+- CLI exit status and stdout/stderr separation; and
+- explicit success messages for rollback and no-op runs.
+
+Tests inject filesystem failures through narrow internal operation interfaces
+rather than relying on timing or platform-specific races. Production code
+continues to use only ES modules and Node built-ins.

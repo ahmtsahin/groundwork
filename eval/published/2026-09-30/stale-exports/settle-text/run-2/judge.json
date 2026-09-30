@@ -1,0 +1,91 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 2,
+    "fakeAlternatives": 1,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question explicitly asked whether ordinary runs should be fresh, explicitly fresh, or globally invalidated, and the user chose fresh-by-default with cached nightly runs."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The first question offered current-source data for every ordinary invocation versus reuse of the six-hour cache, and the user selected current data every time."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first question explicitly framed preserving the nightly ten-minute target through an opt-in cached mode, which the user selected."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The user selected an explicit cached option, then answered the separate option-name question with `--cached`."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "The concurrent-rewrite question offered obtaining one stable read versus accepting already-read bytes or failing, and the user chose a stable read with bounded retries."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The agent explicitly asked what should happen when `orders.json` changes during an export, and the user chose retrying a couple of times before failure."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The initial alternatives included automatic source-change invalidation versus bypassing cache on the fresh path, and the user selected fresh-path cache bypass."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "Several questions presented failure-output choices, and the user specified loud failure with no CSV when trusted source data cannot be obtained."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The agent asked whether a concurrent rewrite should be retried, accepted, or failed immediately, and the user chose only a couple of retries before loud failure."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 11,
+    "approvalGates": 1,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 10,
+    "withConcreteOptions": 10,
+    "withRecommendation": 10,
+    "withRepositoryEvidence": 8
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session declared the expected bounded path, grounded most questions in specific repository evidence, and thoroughly covered every core and depth decision without asking forbidden questions. However, its three initial alternatives contained one fake distinction between the same explicit-mode approach with opposite defaults, and the implementation contradicted the user's literal turn-four choice of 3A by warning on cache-write failure even though 3A said to emit no cache error; that contradiction does not map to a rubric material-decision ID.",
+  "rubricMaterialCount": 9
+}

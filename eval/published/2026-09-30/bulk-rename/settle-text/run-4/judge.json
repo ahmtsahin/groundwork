@@ -1,0 +1,82 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The first question explicitly asked whether to reject the whole batch, skip collisions, or replace existing targets, and the user chose rejection with all collisions reported."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Turn 2 asked the scope of the no-partial-change guarantee, and the user chose “2C” and stated that the whole run must leave nothing changed if it cannot complete."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "Turn 2 explicitly asked whether an occupied target that is also a matched source should count as a collision, and the user chose 1A."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The occupied-matched-source question contrasted rejecting every occupied target with allowing targets vacated later in the batch, and the user chose rejection."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The occupied-target question explicitly tied rejection to accidental reruns, and choosing 1A settled a repeated identical run as a collision refusal rather than renumbering."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question or repository-derived conclusion addressed case-only renames or case-insensitive filesystem behavior."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The agent asked about collision reporting, stdout timing, recovery-only exit status, and cleanup warnings, and the user selected explicit reporting and exit behavior."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The agent discussed when rename lines should print but never asked or settled whether preview or confirmation was part of the safety design."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 14,
+    "approvalGates": 1,
+    "withSingleAxis": 12,
+    "recommendationAccepted": 12,
+    "withConcreteOptions": 13,
+    "withRecommendation": 13,
+    "withRepositoryEvidence": 7
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "decisionsLost": [
+      "atomicity"
+    ],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session declared the bounded path up front, gathered many concrete safety and recovery decisions, and visibly implemented most selected policies without asking forbidden repository-settled questions. It over-expanded into an architectural transaction system, missed case-insensitive filesystem and preview decisions, and the implementation does not literally guarantee unchanged files after every failure or prevent overwrite races from external writers.",
+  "rubricMaterialCount": 8
+}

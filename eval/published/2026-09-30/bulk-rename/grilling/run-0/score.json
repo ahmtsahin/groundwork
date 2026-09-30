@@ -1,0 +1,86 @@
+{
+  "arm": "grilling",
+  "label": "grilling (mattpocock)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 2054,
+    "wallClockMs": 281130,
+    "tokens": {
+      "input": 457832,
+      "output": 8135,
+      "total": 465967
+    }
+  },
+  "interaction": {
+    "agentTurns": 8,
+    "userMessages": 7,
+    "nativeRounds": 0,
+    "humanInputs": 7,
+    "questionsAsked": 12,
+    "approvalGates": 1,
+    "decisionQuestions": 11
+  },
+  "questionQuality": {
+    "withConcreteOptions": 11,
+    "withRecommendation": 11,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 9,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0.727,
+    "recommendationAccuracy": 0.818
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 2,
+    "depthTotal": 5,
+    "depthRate": 0.4,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "case-insensitive-fs"
+    ],
+    "closureRate": 0.5,
+    "forbiddenAsked": [
+      "stream-convention"
+    ],
+    "forbiddenCount": 1
+  },
+  "outcome": {
+    "decisionsHonored": 4,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session thoroughly settled collision handling, practical rollback, and failure diagnostics, and those choices are visible in the implementation. It nevertheless missed self-inclusion, transient collisions, repeat-run behavior, and case-only filesystem behavior; the implementation also cannot strictly guarantee either acceptance goal because rollback can fail and the existence-check/rename sequence has an overwrite race on filesystems where rename replaces an existing target."
+}

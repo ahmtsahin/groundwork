@@ -1,0 +1,632 @@
+ADDED docs/decisions/2026-09-30-atomic-output-publication.md
+# Atomic output publication
+
+## Request as understood
+
+Fix bulk renaming so an existing target cannot stop a run after earlier files
+have already changed. The final requirement is stronger: forced process
+termination must never expose a half-renamed directory.
+
+## Path and approach
+
+This began as a bounded collision fix. It moved to the architectural path when
+the forced-termination guarantee introduced a new publication model and
+persistent recovery metadata. The chosen approach builds a complete sibling
+output tree and atomically publishes it, leaving the input unchanged.
+
+## Questions and answers
+
+1. Reject the whole plan before changing anything and report every conflict.
+2. Rejected runs have empty stdout; diagnostics use stderr and a nonzero exit.
+3. A target occupied by another planned source is a conflict.
+4. Application failures restore everything; superseded by never modifying input.
+5. Concurrent in-place runs are refused; superseded by per-output serialization.
+6. External interference gets best-effort cleanup with every failure listed.
+7. Self-mappings are not changes; report `nothing changed` when none remain.
+8. Remove ownership state only when it is demonstrably stale.
+9. Use stable human-readable item lines followed by a summary.
+10. Publish a complete sibling output and leave input unchanged.
+11. Require `--output <dir>`.
+12. Publish a full top-level snapshot.
+13. Reject an existing output without changing it.
+14. Reject directories and symbolic links in the input.
+15. Preserve contents, modification time, and permission mode.
+16. Detect observable input changes and refuse publication.
+17. With zero effective renames, publish nothing and report `nothing changed`.
+18. Continue rejecting internally occupied targets under the output design.
+19. Remove only demonstrably abandoned builds; report ambiguous ones.
+20. Guarantee process-termination safety and exclude power-loss durability.
+21. Reject a missing output parent rather than creating it.
+22. The final non-mutating publication contract was confirmed for implementation.
+
+## Probe ledger
+
+1. Scope exclusions: no recursion, non-file entries, in-place mode, undo, or power-loss durability — **user:** Q5 rejected non-files and Q11 limited the guarantee to process termination.
+2. Empty input: zero effective renames publish nothing and print `nothing changed` — **user:** Q8 chose no publication.
+3. Duplicate input: duplicate or occupied targets reject the plan and every conflict is reported — **user:** Q1 and Q9 retained rejection.
+4. Concurrent input: while copying, an external writer can provide newer input; observable change discards the build, while a second publisher for the same output is refused — **user:** Q4 rejected existing output and Q7 chose refusal on observable change.
+5. Partial input: a partially copied tree never receives the final output name — **user:** architectural Q1B selected isolated publication.
+6. Repeated input: self-only and zero-change runs publish nothing and report `nothing changed` — **user:** Q7 and Q8 selected no-op behavior.
+7. Failed input: missing or unreadable input fails before publication, observable stale input fails after copying, and malformed patterns cannot arise because only `*` is syntax — **repository:** `src/match.js` and `src/rename.js`.
+8. State location: owner metadata lives only in a hidden lock or unpublished sibling temporary directory — **user:** Q10 selected abandoned-build tracking.
+9. State lifetime: remove state on completion and reclaim it only when the local owner is demonstrably gone — **user:** Q10 selected demonstrably abandoned cleanup.
+10. State migration: the removed implementation had no durable state — **repository:** the former `src/rename.js` directly called `renameSync`.
+11. Shape readers: scripts read CLI streams and callers may import the helpers — **repository:** `src/cli.js`, `package.json`, and `test/rename.test.js`.
+12. Compatibility break: old three-argument calls fail and must add `--output`; helper exports remain — **user:** Q2 chose the required flag.
+13. Authorization: filesystem permissions decide who may read input and create output — **repository:** filesystem calls in `src/rename.js`.
+14. Validation: parent, destination, input entries, filename targets, conflicts, owner state, and before/after snapshots are checked — **user:** Q1, Q3, Q4, Q5, Q7, Q9, Q10, and Q12.
+15. Recording: PID and hostname exist only for transient recovery; no rename journal is needed because input stays unchanged — **user:** architectural Q1B and Q10.
+16. Failure presentation: stderr lists every issue and a summary, stdout is empty, and status is nonzero — **user:** Q2 and Q9.
+17. Failure residue: caught failures clean up best-effort; interrupted state is reclaimed only when demonstrably abandoned and ambiguous state is reported — **user:** Q6 and Q10.
+18. Seam placement: the CLI gains `--output`, and `publishRenames` replaces in-place application for CLI use — **user:** Q2 chose the interface.
+
+## Resolved contract
+
+The invocation is
+`renamer <dir> <pattern> <replacement> --output <dir>`. Validation happens
+before copying. A full regular-file snapshot is built beside the output, with
+matched files renamed and requested portable metadata preserved. The input is
+checked again, then the complete temporary directory is atomically renamed to
+the absent final output. Failures never publish. Process termination can leave
+unpublished state but cannot modify input or expose a partial final output.
+Power-loss durability is not guaranteed.
+
+## Check that proved it
+
+`npm test` passed nine tests covering numbering, complete publication, input
+and metadata preservation, conflict and non-file rejection, zero-change
+behavior, stale recovery, and active-publisher refusal. Direct CLI checks proved
+nonzero conflict diagnostics, stdout/stderr separation, and successful
+`nothing changed` output.
+
+
+MODIFIED package.json
+--- before ---
+{
+  "name": "renamer",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "bin": { "renamer": "./src/cli.js" },
+  "scripts": { "test": "node --test test/*.test.js" }
+}
+
+--- after ---
+{
+  "name": "renamer",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "bin": { "renamer": "./src/cli.js" },
+  "scripts": { "test": "node --test --experimental-test-isolation=none test/*.test.js" }
+}
+
+
+MODIFIED README.md
+--- before ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Known rough edge
+
+If a target name already exists the run stops partway with an EEXIST error, and
+the files renamed before that point stay renamed. This is what people complain
+about.
+
+--- after ---
+# renamer
+
+Builds a renamed, top-level snapshot of a directory and publishes it atomically.
+The input directory is never modified.
+
+    renamer <dir> <pattern> <replacement> --output <dir>
+
+`#` in the replacement is substituted with a sequence number. The output parent
+must already exist and the output path itself must not exist.
+
+The input may contain top-level regular files only. Every regular file is copied
+to the output; matching files receive their planned names and unmatched files
+keep their names. Contents, modification times, and permission modes are
+preserved. Directories and symbolic links are rejected rather than omitted.
+
+Before copying, renamer reports every duplicate or occupied target and rejects
+the whole plan. It also rejects an input that observably changes while copying.
+An invocation with no effective rename publishes nothing and prints
+`nothing changed`.
+
+## Publication safety
+
+The result is built in a temporary directory beside the output and receives the
+final output name only after the complete snapshot has been checked. If the
+process crashes or is forcibly terminated, the input remains unchanged and the
+final output is either absent or complete. A later run removes temporary builds
+only when their owning local process is demonstrably gone; ambiguous artifacts
+are reported for manual review.
+
+This process-termination guarantee is not a power-loss guarantee. Sudden machine
+or storage failure remains subject to the filesystem's own durability and
+recovery behavior.
+
+Diagnostics are written to stderr and failures exit nonzero. Successful rename
+mappings and `nothing changed` are written to stdout.
+
+## How it is used
+
+Photographers run it on a card dump before importing, typically 200–800 files.
+It is run from scripts as well as by hand.
+
+The command is deliberately nonrecursive. It does not provide an in-place mode
+or an undo journal: the unchanged input is the recovery source.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { publishRenames, RenamerError } from "./rename.js";
+
+const args = process.argv.slice(2);
+
+if (args.length !== 5 || args[3] !== "--output" || !args[4]) {
+  console.error("usage: renamer <dir> <pattern> <replacement> --output <dir>");
+  process.exit(1);
+}
+
+const [directory, pattern, replacement, , output] = args;
+try {
+  const result = publishRenames(directory, pattern, replacement, output);
+  if (result.status === "unchanged") {
+    process.stdout.write("nothing changed\n");
+  } else {
+    for (const step of result.changes) process.stdout.write(`${step.from} -> ${step.to}\n`);
+  }
+} catch (error) {
+  if (error instanceof RenamerError) {
+    for (const line of error.lines) process.stderr.write(`${line}\n`);
+    process.stderr.write(`summary: ${error.summary}\n`);
+  } else {
+    process.stderr.write(`error: ${error.message}\nsummary: output was not published\n`);
+  }
+  process.exitCode = 1;
+}
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import {
+  chmodSync, closeSync, copyFileSync, existsSync, fsyncSync, lstatSync,
+  mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync,
+  statSync, unlinkSync, utimesSync, writeFileSync
+} from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { matchFiles } from "./match.js";
+
+export class RenamerError extends Error {
+  constructor(lines, summary = "output was not published") {
+    super(lines[0] ?? summary);
+    this.name = "RenamerError";
+    this.lines = lines;
+    this.summary = summary;
+  }
+}
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+const ownerText = () => `${JSON.stringify({
+  pid: process.pid, hostname: os.hostname(), startedAt: new Date().toISOString()
+})}\n`;
+
+function ownerState(marker) {
+  let owner;
+  try { owner = JSON.parse(readFileSync(marker, "utf8")); }
+  catch { return "ambiguous"; }
+  if (owner.hostname !== os.hostname() || !Number.isSafeInteger(owner.pid)) return "ambiguous";
+  try { process.kill(owner.pid, 0); return "active"; }
+  catch (error) { return error.code === "ESRCH" ? "stale" : "ambiguous"; }
+}
+
+function artifacts(output) {
+  const parent = path.dirname(output);
+  const base = path.basename(output);
+  return {
+    parent,
+    lock: path.join(parent, `.${base}.renamer-lock`),
+    prefix: `.${base}.renamer-tmp-`
+  };
+}
+
+function recover(output) {
+  const { parent, lock, prefix } = artifacts(output);
+  const problems = [];
+  if (existsSync(lock)) {
+    const state = ownerState(lock);
+    if (state === "stale") {
+      try { unlinkSync(lock); } catch (error) { problems.push(`cleanup: ${lock}: ${error.message}`); }
+    } else problems.push(`${state === "active" ? "busy" : "manual review"}: ${lock}`);
+  }
+  for (const entry of readdirSync(parent, { withFileTypes: true })) {
+    if (!entry.name.startsWith(prefix) || !entry.isDirectory()) continue;
+    const temporary = path.join(parent, entry.name);
+    const state = ownerState(path.join(temporary, ".renamer-owner.json"));
+    if (state === "stale") {
+      try { rmSync(temporary, { recursive: true }); }
+      catch (error) { problems.push(`cleanup: ${temporary}: ${error.message}`); }
+    } else problems.push(`${state === "active" ? "busy" : "manual review"}: ${temporary}`);
+  }
+  if (problems.length) throw new RenamerError(problems);
+}
+
+function acquireLock(output) {
+  const { lock } = artifacts(output);
+  let fd;
+  try {
+    fd = openSync(lock, "wx");
+    writeFileSync(fd, ownerText());
+    fsyncSync(fd);
+    return { path: lock, fd };
+  } catch (error) {
+    if (fd !== undefined) closeSync(fd);
+    throw new RenamerError([`busy: ${lock}: ${error.message}`]);
+  }
+}
+
+function releaseLock(lock) {
+  if (!lock) return [];
+  const problems = [];
+  try { closeSync(lock.fd); } catch (error) { problems.push(`cleanup: ${lock.path}: ${error.message}`); }
+  try { unlinkSync(lock.path); } catch (error) { problems.push(`cleanup: ${lock.path}: ${error.message}`); }
+  return problems;
+}
+
+function snapshot(directory) {
+  const files = new Map();
+  const invalid = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const details = lstatSync(path.join(directory, entry.name), { bigint: true });
+    if (!details.isFile()) invalid.push(`unsupported entry: ${entry.name}`);
+    else files.set(entry.name, {
+      size: details.size, mtimeNs: details.mtimeNs, mode: details.mode,
+      dev: details.dev, ino: details.ino
+    });
+  }
+  return { files, invalid };
+}
+
+function snapshotsEqual(left, right) {
+  if (left.size !== right.size) return false;
+  for (const [name, before] of left) {
+    const after = right.get(name);
+    if (!after) return false;
+    if (["size", "mtimeNs", "mode", "dev", "ino"].some((field) => before[field] !== after[field])) return false;
+  }
+  return true;
+}
+
+const key = (name) => process.platform === "win32" ? name.toLocaleLowerCase("en-US") : name;
+
+function planConflicts(plan, inputNames) {
+  const conflicts = [];
+  const occupants = new Map(inputNames.map((name) => [key(name), name]));
+  const targets = new Map();
+  for (const step of plan) {
+    if (!step.to || step.to === "." || step.to === ".." || path.basename(step.to) !== step.to) {
+      conflicts.push(`conflict: ${step.from} -> ${step.to}: target must be one filename`);
+      continue;
+    }
+    if (step.from === step.to) continue;
+    const target = key(step.to);
+    if (targets.has(target)) {
+      conflicts.push(`conflict: ${step.from} -> ${step.to}: duplicate target also used by ${targets.get(target)}`);
+    } else targets.set(target, step.from);
+    const occupant = occupants.get(target);
+    if (occupant && key(occupant) !== key(step.from)) {
+      conflicts.push(`conflict: ${step.from} -> ${step.to}: target is occupied by ${occupant}`);
+    }
+  }
+  return conflicts;
+}
+
+function removeTemporary(temporary) {
+  if (!temporary || !existsSync(temporary)) return [];
+  try { rmSync(temporary, { recursive: true }); return []; }
+  catch (error) { return [`cleanup: ${temporary}: ${error.message}`]; }
+}
+
+export function publishRenames(directory, pattern, replacement, outputDirectory) {
+  const input = path.resolve(directory);
+  const output = path.resolve(outputDirectory);
+  const parent = path.dirname(output);
+  let lock;
+  let temporary;
+  let result;
+  let failure;
+  try {
+    if (!statSync(input).isDirectory()) throw new RenamerError([`invalid input: ${input}: not a directory`]);
+    let parentStat;
+    try { parentStat = statSync(parent); }
+    catch (error) { throw new RenamerError([`invalid output parent: ${parent}: ${error.message}`]); }
+    if (!parentStat.isDirectory()) throw new RenamerError([`invalid output parent: ${parent}: not a directory`]);
+    if (output === input || output.startsWith(`${input}${path.sep}`)) {
+      throw new RenamerError([`invalid output: ${output}: must be outside the input directory`]);
+    }
+    recover(output);
+    lock = acquireLock(output);
+    if (existsSync(output)) {
+      throw new RenamerError([`conflict: output already exists: ${output}`], "1 conflict; output was not published");
+    }
+
+    const before = snapshot(input);
+    if (before.invalid.length) throw new RenamerError(before.invalid);
+    const plan = planRenames(input, pattern, replacement);
+    const conflicts = planConflicts(plan, [...before.files.keys()]);
+    if (conflicts.length) {
+      throw new RenamerError(conflicts, `${conflicts.length} conflict${conflicts.length === 1 ? "" : "s"}; output was not published`);
+    }
+    const changes = plan.filter(({ from, to }) => from !== to);
+    if (!changes.length) return result = { status: "unchanged", changes: [] };
+
+    const renamed = new Map(changes.map(({ from, to }) => [from, to]));
+    const { prefix } = artifacts(output);
+    temporary = path.join(parent, `${prefix}${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    mkdirSync(temporary);
+    writeFileSync(path.join(temporary, ".renamer-owner.json"), ownerText());
+    for (const [name, metadata] of before.files) {
+      const source = path.join(input, name);
+      const destination = path.join(temporary, renamed.get(name) ?? name);
+      copyFileSync(source, destination);
+      chmodSync(destination, Number(metadata.mode & 0o7777n));
+      const modified = statSync(source).mtime;
+      utimesSync(destination, modified, modified);
+    }
+    const after = snapshot(input);
+    if (after.invalid.length || !snapshotsEqual(before.files, after.files)) {
+      throw new RenamerError(["input changed while the snapshot was being built"]);
+    }
+    if (existsSync(output)) {
+      throw new RenamerError([`conflict: output appeared while building: ${output}`], "1 conflict; output was not published");
+    }
+    unlinkSync(path.join(temporary, ".renamer-owner.json"));
+    renameSync(temporary, output);
+    temporary = undefined;
+    return result = { status: "published", changes };
+  } catch (error) {
+    failure = error instanceof RenamerError ? error : new RenamerError([`error: ${error.message}`]);
+    const cleanup = removeTemporary(temporary);
+    failure.lines.push(...cleanup);
+    if (cleanup.length) failure.summary += `; ${cleanup.length} path could not be cleaned up`;
+    throw failure;
+  } finally {
+    const cleanup = releaseLock(lock);
+    if (failure) failure.lines.push(...cleanup);
+    else if (cleanup.length) process.stderr.write(`${cleanup.join("\n")}\nsummary: ${result?.status ?? "operation"} completed; lock cleanup failed\n`);
+  }
+}
+
+// Retained for module compatibility; the CLI uses the non-mutating publisher.
+export function applyRenames(directory, plan) {
+  const names = readdirSync(directory, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name);
+  const conflicts = planConflicts(plan, names);
+  if (conflicts.length) throw new RenamerError(conflicts, `${conflicts.length} conflicts; nothing changed`);
+  const completed = [];
+  try {
+    for (const step of plan) {
+      if (step.from === step.to) continue;
+      renameSync(path.join(directory, step.from), path.join(directory, step.to));
+      completed.push(step);
+    }
+  } catch (error) {
+    const unrestored = [];
+    for (const step of completed.reverse()) {
+      try { renameSync(path.join(directory, step.to), path.join(directory, step.from)); }
+      catch (rollback) { unrestored.push(`unrestored: ${step.to} -> ${step.from}: ${rollback.message}`); }
+    }
+    throw new RenamerError([`error: ${error.message}`, ...unrestored], `rename failed; ${unrestored.length} paths could not be restored`);
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { planRenames, publishRenames, RenamerError } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+function workspace() {
+  const root = mkdtempSync(path.join(os.tmpdir(), "renamer-test-"));
+  const input = path.join(root, "input");
+  mkdirSync(input);
+  return { root, input, output: path.join(root, "output") };
+}
+
+test("publishes a complete snapshot without changing the input", () => {
+  const { input, output } = workspace();
+  writeFileSync(path.join(input, "a.jpg"), "a");
+  writeFileSync(path.join(input, "notes.txt"), "notes");
+  chmodSync(path.join(input, "a.jpg"), 0o640);
+  const before = statSync(path.join(input, "a.jpg"));
+  assert.equal(publishRenames(input, "*.jpg", "photo-#.jpg", output).status, "published");
+  assert.deepEqual(readdirSync(input).sort(), ["a.jpg", "notes.txt"]);
+  assert.deepEqual(readdirSync(output).sort(), ["notes.txt", "photo-001.jpg"]);
+  assert.equal(readFileSync(path.join(output, "photo-001.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(output, "notes.txt"), "utf8"), "notes");
+  const copied = statSync(path.join(output, "photo-001.jpg"));
+  assert.equal(copied.mode & 0o777, before.mode & 0o777);
+  assert.ok(Math.abs(copied.mtimeMs - before.mtimeMs) < 2);
+});
+
+test("reports plan conflicts and publishes nothing", () => {
+  const { input, output } = workspace();
+  writeFileSync(path.join(input, "a.jpg"), "a");
+  writeFileSync(path.join(input, "b.jpg"), "b");
+  writeFileSync(path.join(input, "photo-001.jpg"), "occupied");
+  assert.throws(() => publishRenames(input, "*.jpg", "photo-#.jpg", output), (error) => {
+    assert.ok(error instanceof RenamerError);
+    assert.deepEqual(error.lines, ["conflict: a.jpg -> photo-001.jpg: target is occupied by photo-001.jpg"]);
+    assert.equal(error.summary, "1 conflict; output was not published");
+    return true;
+  });
+  assert.deepEqual(readdirSync(input).sort(), ["a.jpg", "b.jpg", "photo-001.jpg"]);
+  assert.throws(() => statSync(output), { code: "ENOENT" });
+});
+
+test("rejects non-file input entries instead of silently omitting them", () => {
+  const { input, output } = workspace();
+  writeFileSync(path.join(input, "a.jpg"), "a");
+  mkdirSync(path.join(input, "album"));
+  assert.throws(() => publishRenames(input, "*.jpg", "photo-#.jpg", output),
+    (error) => error instanceof RenamerError && error.lines[0] === "unsupported entry: album");
+  assert.throws(() => statSync(output), { code: "ENOENT" });
+});
+
+test("a self-only plan reports unchanged and creates no output", () => {
+  const { input, output } = workspace();
+  writeFileSync(path.join(input, "photo-001.jpg"), "a");
+  assert.deepEqual(publishRenames(input, "*.jpg", "photo-#.jpg", output), { status: "unchanged", changes: [] });
+  assert.throws(() => statSync(output), { code: "ENOENT" });
+});
+
+test("reclaims demonstrably stale build artifacts", () => {
+  const { root, input, output } = workspace();
+  writeFileSync(path.join(input, "a.jpg"), "a");
+  const owner = JSON.stringify({ pid: 2147483647, hostname: os.hostname() });
+  writeFileSync(path.join(root, ".output.renamer-lock"), owner);
+  const abandoned = path.join(root, ".output.renamer-tmp-old");
+  mkdirSync(abandoned);
+  writeFileSync(path.join(abandoned, ".renamer-owner.json"), owner);
+  writeFileSync(path.join(abandoned, "partial.jpg"), "partial");
+  assert.equal(publishRenames(input, "*.jpg", "photo-#.jpg", output).status, "published");
+  assert.deepEqual(readdirSync(root).sort(), ["input", "output"]);
+});
+
+test("refuses an active publisher for the same output", () => {
+  const { root, input, output } = workspace();
+  writeFileSync(path.join(input, "a.jpg"), "a");
+  writeFileSync(path.join(root, ".output.renamer-lock"), JSON.stringify({ pid: process.pid, hostname: os.hostname() }));
+  assert.throws(() => publishRenames(input, "*.jpg", "photo-#.jpg", output),
+    (error) => error instanceof RenamerError && error.lines[0].startsWith("busy:"));
+});
+
+async function runCli(args) {
+  const saved = { argv: process.argv, exitCode: process.exitCode };
+  let stdout = "";
+  let stderr = "";
+  const stdoutWrite = process.stdout.write;
+  const stderrWrite = process.stderr.write;
+  process.argv = [process.execPath, "src/cli.js", ...args];
+  process.exitCode = undefined;
+  process.stdout.write = (chunk) => { stdout += chunk; return true; };
+  process.stderr.write = (chunk) => { stderr += chunk; return true; };
+  try {
+    await import(`../src/cli.js?test=${Date.now()}-${Math.random()}`);
+    return { stdout, stderr, exitCode: process.exitCode ?? 0 };
+  } finally {
+    process.argv = saved.argv;
+    process.exitCode = saved.exitCode;
+    process.stdout.write = stdoutWrite;
+    process.stderr.write = stderrWrite;
+  }
+}
+
+test("CLI keeps rejected-run stdout empty and reports a summary on stderr", async () => {
+  const { input, output } = workspace();
+  writeFileSync(path.join(input, "a.jpg"), "a");
+  writeFileSync(path.join(input, "photo-001.jpg"), "occupied");
+  const result = await runCli([input, "*.jpg", "photo-#.jpg", "--output", output]);
+  assert.equal(result.stdout, "");
+  assert.equal(result.exitCode, 1);
+  assert.match(result.stderr, /^conflict: /);
+  assert.match(result.stderr, /\nsummary: 1 conflict; output was not published\n$/);
+});
+
+test("CLI reports a zero-change run on stdout", async () => {
+  const { input, output } = workspace();
+  writeFileSync(path.join(input, "photo-001.jpg"), "a");
+  const result = await runCli([input, "*.jpg", "photo-#.jpg", "--output", output]);
+  assert.deepEqual(result, { stdout: "nothing changed\n", stderr: "", exitCode: 0 });
+});

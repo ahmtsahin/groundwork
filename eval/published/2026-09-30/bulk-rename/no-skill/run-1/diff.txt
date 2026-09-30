@@ -1,0 +1,183 @@
+MODIFIED README.md
+--- before ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Known rough edge
+
+If a target name already exists the run stops partway with an EEXIST error, and
+the files renamed before that point stay renamed. This is what people complain
+about.
+
+--- after ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+Before renaming, the complete plan is checked for existing or duplicate target
+names. If there is a collision, the run fails before changing any files.
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { existsSync, renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  const destinations = new Set();
+
+  for (const step of plan) {
+    const from = path.resolve(directory, step.from);
+    const to = path.resolve(directory, step.to);
+
+    if (destinations.has(to)) {
+      throw new Error(`multiple files would be renamed to ${step.to}`);
+    }
+    destinations.add(to);
+
+    if (from !== to && existsSync(to)) {
+      const error = new Error(`target already exists: ${step.to}`);
+      error.code = "EEXIST";
+      throw error;
+    }
+  }
+
+  for (const step of plan) {
+    const from = path.join(directory, step.from);
+    const to = path.join(directory, step.to);
+
+    if (path.resolve(from) !== path.resolve(to)) {
+      renameSync(from, to);
+    }
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { applyRenames, planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("a target collision is detected before any files are renamed", (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "photo-002.jpg"), "existing");
+
+  const plan = [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ];
+
+  assert.throws(() => applyRenames(directory, plan), { code: "EEXIST" });
+  assert.equal(existsSync(path.join(directory, "a.jpg")), true);
+  assert.equal(existsSync(path.join(directory, "b.jpg")), true);
+  assert.equal(existsSync(path.join(directory, "photo-001.jpg")), false);
+});
+
+test("a collision-free plan renames every file", (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+
+  applyRenames(directory, [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+
+  assert.equal(existsSync(path.join(directory, "a.jpg")), false);
+  assert.equal(existsSync(path.join(directory, "b.jpg")), false);
+  assert.equal(existsSync(path.join(directory, "photo-001.jpg")), true);
+  assert.equal(existsSync(path.join(directory, "photo-002.jpg")), true);
+});

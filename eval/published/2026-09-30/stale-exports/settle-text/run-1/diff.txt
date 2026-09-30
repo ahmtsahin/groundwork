@@ -1,0 +1,419 @@
+ADDED data/orders.manifest.json
+{"sha256":"2e7b13c568d7d8c8bf8b343f00212bfe6a636722c268e2dc138ee8dcd7bae8b9"}
+
+
+ADDED docs/decisions/2026-09-30-manifest-verified-order-exports.md
+# Manifest-verified order exports
+
+## Request as understood
+
+Prevent reportkit exports from returning stale cached order data while preserving the cache performance needed by the nightly batch, the array schema of `data/orders.json`, and the existing CSV column order.
+
+## Declared path and approach
+
+The work began as bounded because it changed the existing export/cache flow. It moved to the architectural path when semantic completeness required a new trust-boundary protocol with the external upstream writer. The chosen approach is a digest-bearing sidecar manifest: the writer completes `data/orders.json`, then atomically publishes `data/orders.manifest.json` containing the SHA-256 digest of the exact source bytes.
+
+## Questions and answers
+
+1. Cache freshness policy: refresh after any completed source change, provided the source-version signal cannot miss changes; otherwise split ad-hoc and nightly behavior.
+2. Concurrent valid rewrite: finish from the starting snapshot without restarting or mixing versions.
+3. Unavailable or malformed source: fail loudly and emit no CSV; bounded retries are acceptable.
+4. Retry count: two retries after the initial attempt (three attempts total).
+5. Retry spacing: 250 ms between attempts, for at most 500 ms added delay.
+6. Malformed cache: ignore it and rebuild from valid source.
+7. Order validation: validate the array and every exported field.
+8. Syntactically valid but incomplete rewrite: never accept a temporary partial snapshot as legitimate; require an upstream completeness marker.
+9. Cache-write failure: emit the fresh export anyway.
+10. Completion protocol: use a digest-bearing sidecar manifest and preserve the existing array schema; publish the manifest atomically only after the source is complete.
+11. Manifest location: `data/orders.manifest.json`.
+12. Manifest encoding: a JSON object with a `sha256` property.
+13. Digest algorithm: SHA-256.
+14. Contract confirmation: implement the resolved contract as stated.
+
+## Probe ledger
+
+1. Scope exclusions — **user:** confirmation question; no source-array schema change, CSV shape change, or ad-hoc/nightly mode split.
+2. Empty input — **repository:** `src/exporter.js` and `toCsv` preserve an empty completed array as a header-only CSV.
+3. Duplicate input — **repository:** `src/store.js` range filtering and `src/exporter.js` mapping preserve source rows without deduplication.
+4. Concurrent input — **user:** concurrent-valid-rewrite question; an export in flight finishes from its starting snapshot when the external upstream sync writer publishes a newer valid input.
+5. Partial input — **user:** incomplete-rewrite and completion-protocol questions; accept only exact bytes authenticated by the atomically published manifest, never an unmarked temporary partial snapshot.
+6. Repeated input — **repository:** `src/cache.js` retains the six-hour TTL and `src/exporter.js` reuses a range cache only for the same source digest.
+7. Failed input — **user:** unavailable/malformed-source, retry-count, and retry-spacing questions; missing, unreadable, malformed, structurally invalid, or digest-mismatched orders/manifest input gets three attempts 250 ms apart, then fails without CSV.
+8. State location — **repository:** `src/cache.js` stores derived state in `.reportkit-cache`; the source and manifest live under `data/` per `src/store.js`.
+9. State lifetime — **repository:** `DEFAULT_TTL_MS` in `src/cache.js` keeps cache entries for six hours, subject to exact source-digest equality.
+10. State migration — **repository:** `src/cache.js` treats legacy entries without `sourceDigest` as misses and replaces them after a valid export.
+11. Shape readers — **repository:** `README.md` identifies Google Sheets as the CSV consumer and the external sync job as the source writer; `src/store.js` reads the new manifest.
+12. Compatibility break — **user:** completion-protocol and confirmation questions; CSV order and source array schema remain stable, while the upstream writer must adopt the new manifest protocol before exports succeed.
+13. Authorization — **cannot arise:** reportkit is a local CLI with no authorization interface or remote boundary in `src/cli.js`, `package.json`, or `README.md`.
+14. Validation — **user:** order-validation and manifest-format questions; require a root array, usable `id`, `placedAt`, `total`, and `status`, plus one lowercase 64-hex SHA-256 value.
+15. Recording — **repository:** `src/cache.js` records digest, write time, and derived rows; the manifest records the completed source digest and no user/security event log exists in this local CLI.
+16. Failure shown to user — **user:** unavailable/malformed-source question; throw after the retry budget so the CLI exits unsuccessfully and writes no CSV.
+17. Failure residue — **user:** malformed-cache and cache-write-failure questions; malformed/legacy cache is disposable, a failed cache write does not block valid output, and subsequent calls rebuild from source.
+18. Seam placement — **user:** completion-protocol question; extend the source-file seam with `data/orders.manifest.json`, without changing the CSV interface or source array schema.
+
+## Resolved contract
+
+Reportkit reads the manifest and exact source bytes as a matched snapshot. It requires a JSON manifest shaped as `{"sha256":"<64 lowercase hex characters>"}` and verifies SHA-256 over the exact bytes of `data/orders.json`. It validates that the source is an array and that every order has a non-empty string `id`, non-empty string `placedAt`, finite numeric `total`, and non-empty string `status`.
+
+A source failure is retried twice after the initial attempt with 250 ms between attempts, then fails without CSV. A verified starting snapshot is used consistently even if a newer one is published during the export. Cache entries include the source digest and are reusable only for that digest; malformed and legacy entries are misses. Cache-write failure does not prevent emitting fresh validated output. CSV columns remain `id,placedAt,total,status` in that order.
+
+The external upstream writer must replace the completed orders file before atomically publishing its matching manifest. Until it adopts that protocol, exports intentionally fail.
+
+## Check that proved it
+
+`node test/exporter.test.js` passed all seven tests covering CSV order, digest invalidation, malformed and legacy cache recovery, bounded digest-mismatch retries, invalid-row rejection, and non-fatal cache-write failure. A direct CLI run against the repository fixture also produced the expected three order rows with the unchanged header.
+
+
+MODIFIED src/cache.js
+--- before ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  const payload = JSON.parse(readFileSync(file, "utf8"));
+  if (Date.now() - payload.writtenAt > ttlMs) return null;
+
+  return payload.rows;
+}
+
+export function writeCache(key, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(
+    cachePath(key),
+    JSON.stringify({ writtenAt: Date.now(), rows }),
+    "utf8"
+  );
+}
+
+--- after ---
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "node:fs";
+import path from "node:path";
+
+const CACHE_DIR = ".reportkit-cache";
+
+// Added in 2.1.0 to keep the nightly batch under the 10 minute window.
+export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function cachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
+}
+
+export function readCache(key, sourceDigest, ttlMs = DEFAULT_TTL_MS) {
+  const file = cachePath(key);
+  if (!existsSync(file)) return null;
+
+  try {
+    const payload = JSON.parse(readFileSync(file, "utf8"));
+    if (Date.now() - payload.writtenAt > ttlMs) return null;
+    if (payload.sourceDigest !== sourceDigest || !Array.isArray(payload.rows)) return null;
+
+    return payload.rows;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCache(key, sourceDigest, rows) {
+  mkdirSync(CACHE_DIR, { recursive: true });
+  const file = cachePath(key);
+  const temporaryFile = `${file}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(
+    temporaryFile,
+    JSON.stringify({ writtenAt: Date.now(), sourceDigest, rows }),
+    "utf8"
+  );
+  renameSync(temporaryFile, file);
+}
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { loadOrdersSnapshot, ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const { orders, sourceDigest } = loadOrdersSnapshot();
+  const cached = readCache(cacheKey(from, to), sourceDigest);
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to, orders).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  try {
+    writeCache(cacheKey(from, to), sourceDigest, rows);
+  } catch {
+    // A cache is an optimization; fresh, validated rows remain exportable.
+  }
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+
+const ORDERS_FILE = "data/orders.json";
+const MANIFEST_FILE = "data/orders.manifest.json";
+const SOURCE_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 250;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+
+function wait(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function validateOrders(orders) {
+  if (!Array.isArray(orders)) throw new Error("orders.json must contain an array");
+
+  for (const [index, order] of orders.entries()) {
+    if (!order || typeof order !== "object" || Array.isArray(order)) {
+      throw new Error(`order at index ${index} must be an object`);
+    }
+    if (typeof order.id !== "string" || order.id.length === 0) {
+      throw new Error(`order at index ${index} has an invalid id`);
+    }
+    if (typeof order.placedAt !== "string" || order.placedAt.length === 0) {
+      throw new Error(`order at index ${index} has an invalid placedAt`);
+    }
+    if (typeof order.total !== "number" || !Number.isFinite(order.total)) {
+      throw new Error(`order at index ${index} has an invalid total`);
+    }
+    if (typeof order.status !== "string" || order.status.length === 0) {
+      throw new Error(`order at index ${index} has an invalid status`);
+    }
+  }
+
+  return orders;
+}
+
+function readSnapshotOnce() {
+  const manifest = JSON.parse(readFileSync(MANIFEST_FILE, "utf8"));
+  if (!manifest || typeof manifest !== "object" || !SHA256_PATTERN.test(manifest.sha256)) {
+    throw new Error("orders manifest must contain a lowercase SHA-256 digest");
+  }
+
+  const source = readFileSync(ORDERS_FILE);
+  const sourceDigest = createHash("sha256").update(source).digest("hex");
+  if (sourceDigest !== manifest.sha256) {
+    throw new Error("orders manifest does not match orders.json");
+  }
+
+  return { source, sourceDigest };
+}
+
+export function loadOrdersSnapshot() {
+  let lastError;
+  for (let attempt = 1; attempt <= SOURCE_ATTEMPTS; attempt += 1) {
+    try {
+      const { source, sourceDigest } = readSnapshotOnce();
+      return {
+        orders: validateOrders(JSON.parse(source.toString("utf8"))),
+        sourceDigest
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt < SOURCE_ATTEMPTS) wait(RETRY_DELAY_MS);
+    }
+  }
+
+  throw new Error(`unable to read a complete orders snapshot after ${SOURCE_ATTEMPTS} attempts`, {
+    cause: lastError
+  });
+}
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return loadOrdersSnapshot().orders;
+}
+
+export function ordersForRange(from, to, orders = loadOrders()) {
+  return orders.filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createHash } from "node:crypto";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { exportOrders, toCsv } from "../src/exporter.js";
+
+function digest(source) {
+  return createHash("sha256").update(source).digest("hex");
+}
+
+function writeSnapshot(directory, orders, manifestDigest) {
+  mkdirSync(path.join(directory, "data"), { recursive: true });
+  const source = JSON.stringify(orders);
+  writeFileSync(path.join(directory, "data", "orders.json"), source);
+  writeFileSync(
+    path.join(directory, "data", "orders.manifest.json"),
+    JSON.stringify({ sha256: manifestDigest ?? digest(source) })
+  );
+}
+
+function inTemporaryProject(run) {
+  const previousDirectory = process.cwd();
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-test-"));
+  process.chdir(directory);
+  try {
+    return run(directory);
+  } finally {
+    process.chdir(previousDirectory);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("a newly published source digest invalidates cached rows", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeSnapshot(".", [{ id: "old", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "old");
+
+    writeSnapshot(".", [{ id: "new", placedAt: "2026-01-02", total: 20, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "new");
+  });
+});
+
+test("matching snapshots reuse cache and malformed caches are rebuilt", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeSnapshot(".", [{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    exportOrders("2026-01-01", "2026-01-31");
+    const cacheFile = path.join(".reportkit-cache", "orders-2026-01-01-2026-01-31.json");
+    const firstCache = JSON.parse(readFileSync(cacheFile, "utf8"));
+    assert.match(firstCache.sourceDigest, /^[0-9a-f]{64}$/);
+
+    writeFileSync(cacheFile, "not json");
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "a1");
+    assert.doesNotThrow(() => JSON.parse(readFileSync(cacheFile, "utf8")));
+  });
+});
+
+test("legacy caches without a source digest are ignored", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeSnapshot(".", [{ id: "fresh", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    mkdirSync(".reportkit-cache");
+    writeFileSync(
+      path.join(".reportkit-cache", "orders-2026-01-01-2026-01-31.json"),
+      JSON.stringify({ writtenAt: Date.now(), rows: [{ id: "stale" }] })
+    );
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "fresh");
+  });
+});
+
+test("digest mismatch fails after the bounded retry budget", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeSnapshot(".", [], "0".repeat(64));
+    const startedAt = Date.now();
+    assert.throws(
+      () => exportOrders("2026-01-01", "2026-01-31"),
+      /unable to read a complete orders snapshot after 3 attempts/
+    );
+    const elapsed = Date.now() - startedAt;
+    assert.ok(elapsed >= 450, `expected retries to wait about 500 ms, got ${elapsed} ms`);
+    assert.ok(elapsed < 1500, `expected bounded retries, got ${elapsed} ms`);
+  });
+});
+
+test("invalid order fields fail without creating a cache", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeSnapshot(".", [{ id: "a1", placedAt: "2026-01-02", status: "paid" }]);
+    assert.throws(() => exportOrders("2026-01-01", "2026-01-31"));
+    assert.throws(() => readFileSync(".reportkit-cache"));
+  });
+});
+
+test("cache write failure does not block fresh rows", { concurrency: false }, () => {
+  inTemporaryProject(() => {
+    writeSnapshot(".", [{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    writeFileSync(".reportkit-cache", "not a directory");
+    assert.equal(exportOrders("2026-01-01", "2026-01-31")[0].id, "a1");
+  });
+});

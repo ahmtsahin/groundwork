@@ -1,0 +1,91 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 6,
+    "distinctApproaches": 4,
+    "fakeAlternatives": 2,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question asked whether ordinary invocations should refresh on source changes, always read fresh data with cached opt-in, or use a shorter global TTL; the user chose refresh on source change."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The first question explicitly contrasted source-change freshness with a fixed shorter TTL, and the user required refresh after every actual content rewrite."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first two questions presented alternatives affecting nightly caching, and the user chose content-bound cache entries specifically to preserve the nightly batch."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The architecture question offered unchanged CLI/content-bound entries, separate fresh and cached CLI modes, or immutable snapshots; the user chose unchanged CLI/content-bound entries."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "The concurrent-rewrite question asked whether to finish from the initially read snapshot, restart, or fail; the user chose the initial valid snapshot."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The agent directly asked what an invocation should do if the source changes during processing, and the user selected finishing from the already-read version."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The architecture question offered cryptographic content digests, bypassing detection through separate modes, or immutable snapshots; the user selected SHA-style content-bound caching."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The source-failure presentation question offered concise nonzero failure with no CSV, an uncaught stack trace, or both; the user chose concise stderr, no CSV, and nonzero exit."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The concurrent-rewrite options explicitly included restarting on changed content versus finishing the initial snapshot or refusing the export; the user chose finishing without retry."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 8,
+    "approvalGates": 1,
+    "withSingleAxis": 2,
+    "recommendationAccepted": 7,
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 7
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly settled every core and depth decision, grounded each substantive question in named repository evidence, and implemented all selected behavior with focused tests. It did overstate the work as becoming architectural after initially and correctly sizing it as bounded, presented two overlapping sets of whole approaches, and added an unnecessary final approval gate.",
+  "rubricMaterialCount": 9
+}

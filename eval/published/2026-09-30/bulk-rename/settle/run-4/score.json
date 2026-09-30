@@ -1,0 +1,84 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 321880,
+    "tokens": {
+      "input": 420724,
+      "output": 11935,
+      "total": 432659
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 5,
+    "humanInputs": 5,
+    "questionsAsked": 9,
+    "approvalGates": 1,
+    "decisionQuestions": 8
+  },
+  "questionQuality": {
+    "withConcreteOptions": 8,
+    "withRecommendation": 8,
+    "withRepositoryEvidence": 8,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 8,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 1,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 2,
+    "depthTotal": 5,
+    "depthRate": 0.4,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "idempotency",
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.5,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 4,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session declared the bounded path, grounded every substantive question in named repository evidence, and implemented the collision, staging, rollback, and reporting choices. It missed self-inclusion, true second-run semantics, and case-insensitive filesystem behavior; moreover, rollback is only best-effort and rename-after-preflight can overwrite a concurrently created destination on filesystems where rename replaces targets, so the two absolute safety requirements are not fully met."
+}

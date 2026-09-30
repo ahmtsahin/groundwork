@@ -1,0 +1,513 @@
+ADDED src/run-cli.js
+import {
+  applyRenames,
+  planRenames,
+  RenameConflictError,
+  RenameTransactionError
+} from "./rename.js";
+
+export function runCli(args, stdout, stderr) {
+  const [directory, pattern, replacement] = args;
+
+  if (!directory || !pattern || !replacement) {
+    stderr.write("usage: renamer <dir> <pattern> <replacement>\n");
+    return 1;
+  }
+
+  try {
+    const plan = planRenames(directory, pattern, replacement);
+    const applied = applyRenames(directory, plan);
+
+    for (const step of applied) {
+      stdout.write(`${step.from} -> ${step.to}\n`);
+    }
+    return 0;
+  } catch (error) {
+    if (error instanceof RenameConflictError) {
+      for (const conflict of error.conflicts) {
+        stderr.write(
+          `${conflict.from} -> ${conflict.to}: ` +
+          `${conflict.reasons.join("; ")}\n`
+        );
+      }
+    } else if (error instanceof RenameTransactionError) {
+      stderr.write(`rename failed: ${error.cause?.message ?? error.cause}\n`);
+      for (const rollback of error.rollbackErrors) {
+        stderr.write(
+          `rollback failed: ${rollback.to} -> ${rollback.from}: ` +
+          `${rollback.error?.message ?? rollback.error}\n`
+        );
+      }
+    } else {
+      stderr.write(`rename failed: ${error?.message ?? error}\n`);
+    }
+    return 1;
+  }
+}
+
+
+MODIFIED package.json
+--- before ---
+{
+  "name": "renamer",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "bin": { "renamer": "./src/cli.js" },
+  "scripts": { "test": "node --test test/*.test.js" }
+}
+
+--- after ---
+{
+  "name": "renamer",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "bin": { "renamer": "./src/cli.js" },
+  "scripts": { "test": "node --test --experimental-test-isolation=none test/*.test.js" }
+}
+
+
+MODIFIED README.md
+--- before ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Known rough edge
+
+If a target name already exists the run stops partway with an EEXIST error, and
+the files renamed before that point stay renamed. This is what people complain
+about.
+
+--- after ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Conflicts and failures
+
+Before moving any files, renamer checks the complete batch for occupied and
+duplicate target names. It reports every conflict to stderr and moves nothing.
+
+If a rename fails after preflight, renamer attempts to restore every file to its
+original name. Successful mappings are printed only after the whole batch has
+completed.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { applyRenames, planRenames } from "./rename.js";
+
+const [, , directory, pattern, replacement] = process.argv;
+
+if (!directory || !pattern || !replacement) {
+  console.error("usage: renamer <dir> <pattern> <replacement>");
+  process.exit(1);
+}
+
+const plan = planRenames(directory, pattern, replacement);
+
+for (const step of plan) {
+  process.stdout.write(`${step.from} -> ${step.to}\n`);
+}
+
+applyRenames(directory, plan);
+
+--- after ---
+#!/usr/bin/env node
+import { runCli } from "./run-cli.js";
+
+process.exitCode = runCli(process.argv.slice(2), process.stdout, process.stderr);
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { randomUUID } from "node:crypto";
+import { lstatSync, renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export class RenameConflictError extends Error {
+  constructor(conflicts) {
+    super(`rename plan has ${conflicts.length} conflicting mapping(s)`);
+    this.name = "RenameConflictError";
+    this.code = "RENAMER_CONFLICT";
+    this.conflicts = conflicts;
+  }
+}
+
+export class RenameTransactionError extends Error {
+  constructor(cause, rollbackErrors) {
+    super("rename transaction failed", { cause });
+    this.name = "RenameTransactionError";
+    this.code = "RENAMER_TRANSACTION_FAILED";
+    this.rollbackErrors = rollbackErrors;
+  }
+}
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+function targetKey(name) {
+  return process.platform === "win32" ? name.toLocaleLowerCase("en-US") : name;
+}
+
+function pathExists(name) {
+  try {
+    lstatSync(name);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+export function findConflicts(directory, plan) {
+  const targetCounts = new Map();
+
+  for (const step of plan) {
+    const key = targetKey(step.to);
+    targetCounts.set(key, (targetCounts.get(key) ?? 0) + 1);
+  }
+
+  const conflicts = [];
+  for (const step of plan) {
+    const reasons = [];
+    const isExactNoOp = step.from === step.to;
+
+    if (!isExactNoOp && pathExists(path.join(directory, step.to))) {
+      reasons.push("target already exists");
+    }
+    if (targetCounts.get(targetKey(step.to)) > 1) {
+      reasons.push("duplicate target");
+    }
+    if (reasons.length > 0) {
+      conflicts.push({ from: step.from, to: step.to, reasons });
+    }
+  }
+
+  return conflicts;
+}
+
+function temporaryPath(directory, reservedNames) {
+  for (;;) {
+    const name = `.renamer-${process.pid}-${randomUUID()}.tmp`;
+    if (!reservedNames.has(targetKey(name)) && !pathExists(path.join(directory, name))) {
+      reservedNames.add(targetKey(name));
+      return name;
+    }
+  }
+}
+
+function rollBack(directory, operations) {
+  const errors = [];
+
+  for (let index = operations.length - 1; index >= 0; index -= 1) {
+    const operation = operations[index];
+    try {
+      renameSync(
+        path.join(directory, operation.to),
+        path.join(directory, operation.from)
+      );
+    } catch (error) {
+      errors.push({ ...operation, error });
+    }
+  }
+
+  return errors;
+}
+
+export function applyRenames(directory, plan) {
+  const conflicts = findConflicts(directory, plan);
+  if (conflicts.length > 0) throw new RenameConflictError(conflicts);
+
+  const changes = plan.filter((step) => step.from !== step.to);
+  if (changes.length === 0) return [];
+
+  const reservedNames = new Set(plan.flatMap((step) => [
+    targetKey(step.from),
+    targetKey(step.to)
+  ]));
+  const staged = changes.map((step) => ({
+    ...step,
+    temporary: temporaryPath(directory, reservedNames)
+  }));
+  const operations = [];
+
+  try {
+    for (const step of staged) {
+      renameSync(path.join(directory, step.from), path.join(directory, step.temporary));
+      operations.push({ from: step.from, to: step.temporary });
+    }
+
+    for (const step of staged) {
+      // Catch a target created after preflight instead of overwriting it where
+      // the platform's rename operation permits replacement.
+      if (pathExists(path.join(directory, step.to))) {
+        const error = new Error(`target appeared during rename: ${step.to}`);
+        error.code = "EEXIST";
+        throw error;
+      }
+      renameSync(path.join(directory, step.temporary), path.join(directory, step.to));
+      operations.push({ from: step.temporary, to: step.to });
+    }
+  } catch (error) {
+    throw new RenameTransactionError(error, rollBack(directory, operations));
+  }
+
+  return changes;
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import {
+  applyRenames,
+  planRenames,
+  RenameConflictError,
+  RenameTransactionError
+} from "../src/rename.js";
+import { runCli } from "../src/run-cli.js";
+
+function temporaryDirectory(t) {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-test-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+function files(directory) {
+  return readdirSync(directory).sort();
+}
+
+function outputBuffer() {
+  let value = "";
+  return {
+    stream: { write(chunk) { value += chunk; } },
+    read() { return value; }
+  };
+}
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("existing targets report every conflict before moving files", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "photo-001.jpg"), "existing");
+  mkdirSync(path.join(directory, "photo-002.jpg"));
+  const plan = [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ];
+
+  assert.throws(
+    () => applyRenames(directory, plan),
+    (error) => {
+      assert.ok(error instanceof RenameConflictError);
+      assert.deepEqual(error.conflicts, [
+        { from: "a.jpg", to: "photo-001.jpg", reasons: ["target already exists"] },
+        { from: "b.jpg", to: "photo-002.jpg", reasons: ["target already exists"] }
+      ]);
+      return true;
+    }
+  );
+  assert.deepEqual(files(directory), ["a.jpg", "b.jpg", "photo-001.jpg", "photo-002.jpg"]);
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "a");
+  assert.equal(readFileSync(path.join(directory, "b.jpg"), "utf8"), "b");
+});
+
+test("duplicate targets report all mappings and all applicable reasons", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "taken.jpg"), "taken");
+  const plan = [
+    { from: "a.jpg", to: "taken.jpg" },
+    { from: "b.jpg", to: "taken.jpg" }
+  ];
+
+  assert.throws(
+    () => applyRenames(directory, plan),
+    (error) => {
+      assert.deepEqual(error.conflicts, [
+        {
+          from: "a.jpg",
+          to: "taken.jpg",
+          reasons: ["target already exists", "duplicate target"]
+        },
+        {
+          from: "b.jpg",
+          to: "taken.jpg",
+          reasons: ["target already exists", "duplicate target"]
+        }
+      ]);
+      return true;
+    }
+  );
+});
+
+test("an execution failure rolls back every completed operation", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "original");
+  const plan = [
+    { from: "a.jpg", to: "renamed-a.jpg" },
+    { from: "missing.jpg", to: "renamed-missing.jpg" }
+  ];
+
+  assert.throws(
+    () => applyRenames(directory, plan),
+    (error) => {
+      assert.ok(error instanceof RenameTransactionError);
+      assert.equal(error.cause.code, "ENOENT");
+      assert.deepEqual(error.rollbackErrors, []);
+      return true;
+    }
+  );
+  assert.deepEqual(files(directory), ["a.jpg"]);
+  assert.equal(readFileSync(path.join(directory, "a.jpg"), "utf8"), "original");
+});
+
+test("successful batches skip exact no-ops and return committed changes", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  const plan = [
+    { from: "a.jpg", to: "a.jpg" },
+    { from: "b.jpg", to: "renamed.jpg" }
+  ];
+
+  assert.deepEqual(applyRenames(directory, plan), [
+    { from: "b.jpg", to: "renamed.jpg" }
+  ]);
+  assert.deepEqual(files(directory), ["a.jpg", "renamed.jpg"]);
+});
+
+test("the CLI keeps stdout empty and reports all conflicts on stderr", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "same.jpg"), "existing");
+
+  const stdout = outputBuffer();
+  const stderr = outputBuffer();
+  const status = runCli(
+    [directory, "*.jpg", "same.jpg"],
+    stdout.stream,
+    stderr.stream
+  );
+
+  assert.equal(status, 1);
+  assert.equal(stdout.read(), "");
+  assert.match(stderr.read(), /a\.jpg -> same\.jpg: target already exists; duplicate target/);
+  assert.match(stderr.read(), /b\.jpg -> same\.jpg: target already exists; duplicate target/);
+  assert.deepEqual(files(directory), ["a.jpg", "b.jpg", "same.jpg"]);
+});
+
+test("the CLI prints mappings only after a successful commit", (t) => {
+  const directory = temporaryDirectory(t);
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+
+  const stdout = outputBuffer();
+  const stderr = outputBuffer();
+  const status = runCli(
+    [directory, "*.jpg", "photo-#.jpg"],
+    stdout.stream,
+    stderr.stream
+  );
+
+  assert.equal(status, 0);
+  assert.equal(stdout.read(), "a.jpg -> photo-001.jpg\nb.jpg -> photo-002.jpg\n");
+  assert.equal(stderr.read(), "");
+  assert.deepEqual(files(directory), ["photo-001.jpg", "photo-002.jpg"]);
+});

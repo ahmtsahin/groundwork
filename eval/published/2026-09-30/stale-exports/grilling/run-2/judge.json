@@ -1,0 +1,91 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 4,
+    "distinctApproaches": 4,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "Q1 asked whether freshness should apply through change-sensitive caching, ad hoc bypass, a shorter global TTL, or no caching, and Q4 later explicitly asked whether strict validation should apply nightly or only ad hoc."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "Q1 asked what “fresh” should mean, and the user selected invalidation whenever the source changes, ultimately scoped to ad hoc runs."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "Q4 explicitly asked whether all roughly 400 nightly calls should pay for strict validation or retain TTL-only caching, and the user chose TTL-only nightly behavior to preserve the ten-minute window."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "Q6 asked where the explicit `--fresh` signal may appear, and the user selected accepting it anywhere with exactly two date arguments."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "Q2 required the fingerprint to cover the exact snapshot parsed, and Q3 asked how to handle a source rewrite during reading."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "Q3 directly asked whether a rewrite during reading should trigger bounded retry, immediate failure, or stale-cache fallback."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "Q2 explicitly contrasted SHA-256, retaining and comparing full bytes, and bypassing the ad hoc cache; the user accepted SHA-256 over the exact parsed snapshot."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "Q5 explicitly presented nonzero exit, stderr reporting, and no CSV as part of the design for invalid or unstable data, which the user refined and accepted for ad hoc runs."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "Q3 asked whether racing reads should retry, fail immediately, or return stale data, and the user chose a couple of retries followed by loud failure."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 8,
+    "approvalGates": 2,
+    "withSingleAxis": 4,
+    "recommendationAccepted": 4,
+    "withConcreteOptions": 6,
+    "withRecommendation": 6,
+    "withRepositoryEvidence": 3
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly settled every core and depth decision, and the implementation visibly honors the resulting split between strict ad hoc freshness and TTL-only nightly behavior. It did not declare the expected bounded path before questioning, and it added two approval gates after the substantive decisions were already largely settled.",
+  "rubricMaterialCount": 9
+}

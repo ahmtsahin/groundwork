@@ -1,0 +1,84 @@
+{
+  "arm": "no-skill",
+  "label": "no skill (Codex only)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 0,
+    "wallClockMs": 74978,
+    "tokens": {
+      "input": 171126,
+      "output": 3042,
+      "total": 174168
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 0,
+    "humanInputs": 0,
+    "questionsAsked": 0,
+    "approvalGates": 0,
+    "decisionQuestions": 0
+  },
+  "questionQuality": {
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "optionRate": null,
+    "recommendationRate": null,
+    "evidenceRate": null,
+    "axisPurityRate": null,
+    "recommendationAccuracy": null
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 1,
+    "coreTotal": 3,
+    "coreRate": 0.333,
+    "depthSettled": 0,
+    "depthTotal": 5,
+    "depthRate": 0,
+    "asked": [],
+    "resolvedFromRepository": [
+      "atomicity"
+    ],
+    "userVolunteered": [],
+    "missed": [
+      "collision-policy",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "case-insensitive-fs",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "closureRate": 0.125,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 1,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "none",
+    "pathExpected": "bounded",
+    "pathCorrect": false,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session directly addressed the documented collision case and added a focused regression test without asking forbidden questions. It silently chose several material policies, rejects valid transient collisions, and its preflight does not guarantee rollback for rename-time failures or races, so the full atomicity and no-overwrite guarantees are not achieved."
+}

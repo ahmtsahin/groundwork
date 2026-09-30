@@ -1,0 +1,81 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The user was asked whether an externally occupied target should abort, be skipped, or be replaced, and selected “Abort upfront.”"
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The runtime-failure question explicitly asked whether to roll back the run or leave completed renames, and the user selected rollback."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "The repeat-run question asked how source-to-same-name steps should behave, and the user selected successful no-ops."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "The final contract-confirmation question explicitly included “safe moves through planned-name chains,” which the user approved."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "The user was asked what a repeated command producing self-renames should do and selected “No-op success.”"
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "No question, repository resolution, or volunteered answer addressed case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The stdout-policy question asked whether rejected plans should print proposed mappings, and the user selected output only after success."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "The session never asked whether preview or confirmation should be part of the fix or whether safety could depend on operator review."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 8,
+    "approvalGates": 1,
+    "withSingleAxis": 7,
+    "recommendationAccepted": 7,
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 6
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session clearly declared a bounded path, avoided forbidden questions, and implemented most explicitly settled behavior with focused tests. It missed case-insensitive filesystem semantics and preview policy, while the implementation cannot strictly guarantee either acceptance requirement because preflight-to-rename races can overwrite a newly created target and rollback is explicitly allowed to fail incompletely.",
+  "rubricMaterialCount": 8
+}

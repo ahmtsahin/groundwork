@@ -1,0 +1,219 @@
+ADDED src/cli-options.js
+export function parseCliArgs(args) {
+  const useCache = args[0] === "--cache";
+  const positional = useCache ? args.slice(1) : args;
+
+  if (positional.length !== 2) return null;
+
+  const [from, to] = positional;
+  return { from, to, useCache };
+}
+
+
+MODIFIED README.md
+--- before ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Not decided
+
+Whether ad hoc runs should see fresher data than the nightly batch does.
+
+--- after ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes fresh CSV data to stdout.
+- `reportkit --cache <from> <to>` opts into the six-hour disk cache for batch jobs.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+The nightly script should use `--cache`; ad hoc runs should omit it so they
+always see the latest synchronized order data.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+import { parseCliArgs } from "./cli-options.js";
+
+const options = parseCliArgs(process.argv.slice(2));
+
+if (!options) {
+  console.error("usage: reportkit [--cache] <from> <to>");
+  process.exit(1);
+}
+
+const { from, to, useCache } = options;
+process.stdout.write(toCsv(exportOrders(from, to, { cache: useCache })));
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to, { cache = false } = {}) {
+  if (cache) {
+    const cached = readCache(cacheKey(from, to));
+    if (cached) return cached;
+  }
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  if (cache) writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { parseCliArgs } from "../src/cli-options.js";
+import { exportOrders, toCsv } from "../src/exporter.js";
+
+function withTemporaryOrders(t) {
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-"));
+  mkdirSync(path.join(directory, "data"));
+  t.after(() => process.chdir(t.originalCwd));
+  t.originalCwd = process.cwd();
+  process.chdir(directory);
+  return (orders) => writeFileSync(
+    path.join(directory, "data", "orders.json"),
+    JSON.stringify(orders),
+    "utf8"
+  );
+}
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("exports are fresh by default while cached exports reuse prior rows", (t) => {
+  const writeOrders = withTemporaryOrders(t);
+  const range = ["2026-01-01", "2026-01-31"];
+  const oldRows = [{ id: "old", placedAt: "2026-01-02", total: 10, status: "paid" }];
+  const newRows = [{ id: "new", placedAt: "2026-01-03", total: 20, status: "paid" }];
+
+  writeOrders(oldRows);
+  assert.deepEqual(exportOrders(...range, { cache: true }), oldRows);
+
+  writeOrders(newRows);
+  assert.deepEqual(exportOrders(...range), newRows);
+  assert.deepEqual(exportOrders(...range, { cache: true }), oldRows);
+});
+
+test("the CLI only enables caching when --cache is explicit", () => {
+  assert.deepEqual(parseCliArgs(["2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    useCache: false
+  });
+  assert.deepEqual(parseCliArgs(["--cache", "2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    useCache: true
+  });
+  assert.equal(parseCliArgs(["--cache", "2026-01-01"]), null);
+});

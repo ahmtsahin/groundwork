@@ -1,0 +1,92 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "Q1 asked what data an export should contain, and the user chose a fresh snapshot captured when the export starts."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "Q1 offered cached data within a defined window versus start- or finish-time freshness, and the user selected the export-start snapshot as the bound."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "Q4 explicitly asked whether caching should be retained for the documented 400-export, ten-minute nightly job, and the user agreed subject to exact validation."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "missed",
+      "justification": "The agent never asked whether the signal should be a batch flag, ad hoc flag, environment variable, or separate subcommand, and silently kept the existing interface."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "asked",
+      "justification": "Q1 asked whether an export should use one consistent snapshot, and the user selected a snapshot from export start."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "Q5 asked what to do if data/orders.json changes during snapshot acquisition, and the user chose an error with no output."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "Q7 contrasted exact byte equality with timestamp, size, and SHA-256 validation, and the user required exact byte-for-byte comparison."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "Q2 asked whether refresh failure should fail visibly or fall back to stale data, and the user required an error with no stale, partial, or empty file."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "Q9 proposed exactly two back-to-back reads followed by failure if they differ or are malformed, and the user accepted that bounded no-retry behavior."
+    }
+  ],
+  "forbiddenAsked": [
+    "column-order"
+  ],
+  "questionQuality": {
+    "totalQuestions": 11,
+    "approvalGates": 1,
+    "withSingleAxis": 8,
+    "recommendationAccepted": 10,
+    "withConcreteOptions": 8,
+    "withRecommendation": 10,
+    "withRepositoryEvidence": 3
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session thoroughly settled freshness, consistency, failure, validation, and cache behavior, and the implementation visibly reflects those answers with focused tests. It never declared the expected bounded path or settled the interface-shape decision, and it unnecessarily asked about CSV column order even though the repository already pinned it.",
+  "rubricMaterialCount": 9
+}

@@ -1,0 +1,86 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 140272,
+    "tokens": {
+      "input": 288183,
+      "output": 5108,
+      "total": 293291
+    }
+  },
+  "interaction": {
+    "agentTurns": 4,
+    "userMessages": 3,
+    "nativeRounds": 0,
+    "humanInputs": 3,
+    "questionsAsked": 3,
+    "approvalGates": 1,
+    "decisionQuestions": 2
+  },
+  "questionQuality": {
+    "withConcreteOptions": 2,
+    "withRecommendation": 2,
+    "withRepositoryEvidence": 0,
+    "withSingleAxis": 1,
+    "recommendationAccepted": 2,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0,
+    "axisPurityRate": 0.5,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.625,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 5,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "no existing file is ever overwritten"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session clearly sized the work, asked focused collision and transient-occupancy questions, and implemented aggregate preflight reporting with no new dependencies. It missed self-inclusion, case-insensitive filesystem semantics, and preview policy, and the preflight-only implementation does not guarantee rollback if a non-collision rename fails after earlier moves."
+}

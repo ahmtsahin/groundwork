@@ -156,6 +156,20 @@ brief and verification results. More rounds also mean more time and token
 usage. Questions follow your language, while code and documentation follow
 the repository's language.
 
+## Measurements
+
+On two bounded repository tasks, run five times each with `gpt-5.6-sol` as
+the agent, the simulated user, and the judge, Codex with no skill asked no
+questions in 10 of 10 runs and settled one of the eight or nine material
+decisions by itself. `settle` settled a median 0.89 and 0.75 of those
+decisions in four native forms per task, and every question it asked cited a
+specific repository fact. grilling (mattpocock/skills) reached 1.0 and 0.63
+with 1.6 to 2 times the questions and about 40% more tokens; brainstorming
+(obra/superpowers 6.4.2) reached 0.78 and 0.63 with one or two questions. No
+skill, this one included, made the resulting code meet the harder task's
+safety guarantees reliably. Method, tables, and limitations are in
+[eval/RESULTS.md](eval/RESULTS.md).
+
 ## Development
 
 Contributors need **Node.js 22.17.0 or newer**:

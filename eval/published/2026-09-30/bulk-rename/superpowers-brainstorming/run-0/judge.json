@@ -1,0 +1,85 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "The first question offered aborting the whole run or skipping conflicting entries, and the user chose abort with no skipping or overwriting."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "The first question asked whether to abort before changing anything, and the user later clarified that move-time failures must restore every original name."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The agent silently assumed exact `from === to` entries should be no-ops without asking whether already-conforming files belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "missed",
+      "justification": "The agent decided to allow targets occupied by members of the moving source set through staging, but never put that policy to the user or ground it in a cited repository fact."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "user_volunteered",
+      "justification": "The user independently required that running the same command twice make the second run a no-op."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "user_volunteered",
+      "justification": "The user independently instructed, “Treat case-only clashes as clashes on this machine.”"
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "The third question explicitly proposed clearly reporting rollback failures, and the user required identifying which files may need attention."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "Neither participant settled whether preview or confirmation belonged in the fix or could be relied upon for safety."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 3,
+    "approvalGates": 2,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "case-insensitive-fs",
+      "failure-reporting"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session correctly declared a bounded path, elicited the central collision policy, and adapted when the user identified the move-time atomicity gap. It implemented and tested staging, rollback, idempotency, case handling, and detailed failure reports, but silently chose self-inclusion and transient-collision semantics and never addressed the preview-mode decision.",
+  "rubricMaterialCount": 8
+}

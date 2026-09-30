@@ -1,0 +1,89 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The agent asked which freshness policy to use, and the user chose current data for ad hoc exports while retaining caching for nightly runs."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The offered and selected policy said ad hoc exports should always use current data, establishing that six-hour-old cached data is unacceptable for that path."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "Before asking, the agent stated the repository-backed constraint that the nightly batch has a ten-minute limit and must retain caching."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The alternatives explicitly contrasted nightly cached opt-in with an ad hoc --fresh option, and the user selected an explicit flag for nightly cached mode."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "user_volunteered",
+      "justification": "After approving the design, the user added unprompted: \"Make sure each export uses one consistent snapshot.\""
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "user_volunteered",
+      "justification": "The user unprompted required the export to fail with no file when the data cannot be trusted, covering a source change during the read."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "No question or user statement selected stat metadata, hashing, or bypassing cache as the source-change detection mechanism; the implementation silently chose fstat metadata."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "user_volunteered",
+      "justification": "The user explicitly volunteered that an untrusted-data failure must produce no file."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "The session never discussed whether racing reads should be retried or how retries should be bounded, and the implementation silently used no retry."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 2,
+    "approvalGates": 1,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 1,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 1
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "failure-output"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session efficiently selected among three genuinely different solution shapes and implemented the chosen fresh-by-default, cached-nightly contract while preserving repository constraints. It was not a thorough interrogation: source-change detection and retry behavior were silently chosen, and the agent declared no work-sizing path before asking its first question.",
+  "rubricMaterialCount": 9
+}

@@ -1,0 +1,83 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "missed",
+      "justification": "The agent silently applied source-version invalidation to every export invocation, even though the rubric says README.md records whether ad hoc and nightly behavior change together as undecided."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "missed",
+      "justification": "No question, repository-derived bound, or user-provided acceptance threshold established how stale an ad hoc export may be."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "The existing src/cache.js comment states that the six-hour cache keeps the nightly batch under ten minutes, and the implementation retained caching."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "missed",
+      "justification": "The agent introduced transparent global invalidation without asking whether the contract should use a batch flag, ad hoc flag, environment variable, or subcommand."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "missed",
+      "justification": "No snapshot rule was established, and the implementation stats the source separately from reading it."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "missed",
+      "justification": "The session never decided what an export should do if data/orders.json is rewritten during the export."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "missed",
+      "justification": "The agent silently selected metadata comparison using mtimeMs, ctimeMs, and size rather than asking the user to choose among the material detection policies."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "missed",
+      "justification": "The transcript and changes do not establish what CSV or exit status should result when valid data cannot be obtained."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "No retry behavior or retry bound was discussed or implemented for reads racing the sync job."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "nightly-budget"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The implementation preserved the pinned CSV contract and nightly caching while adding regression coverage for invalidation after a source rewrite. However, the agent asked no questions, declared no work-sizing path, and silently chose nearly every core and depth policy, including a metadata-based detector with unresolved race and failure semantics.",
+  "rubricMaterialCount": 9
+}

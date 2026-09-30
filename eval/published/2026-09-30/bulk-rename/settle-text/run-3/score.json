@@ -1,0 +1,84 @@
+{
+  "arm": "settle-text",
+  "label": "settle (text)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 15555,
+    "wallClockMs": 332890,
+    "tokens": {
+      "input": 500652,
+      "output": 14905,
+      "total": 515557
+    }
+  },
+  "interaction": {
+    "agentTurns": 6,
+    "userMessages": 5,
+    "nativeRounds": 0,
+    "humanInputs": 5,
+    "questionsAsked": 8,
+    "approvalGates": 1,
+    "decisionQuestions": 7
+  },
+  "questionQuality": {
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 7,
+    "withSingleAxis": 7,
+    "recommendationAccepted": 7,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 1,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 2,
+    "coreTotal": 3,
+    "coreRate": 0.667,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "self-inclusion",
+      "case-insensitive-fs"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 6,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session clearly declared a bounded path, used repository-specific evidence, avoided forbidden questions, and implemented the user’s selected collision, locking, rollback, and reporting behavior. It missed the explicit self-inclusion and case-insensitive-filesystem decisions, and best-effort rollback plus validation/application races do not strictly guarantee either acceptance requirement."
+}

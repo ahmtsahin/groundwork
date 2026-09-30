@@ -1,0 +1,84 @@
+{
+  "arm": "settle",
+  "label": "settle (native)",
+  "channel": "native",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 16772,
+    "wallClockMs": 439787,
+    "tokens": {
+      "input": 574471,
+      "output": 14846,
+      "total": 589317
+    }
+  },
+  "interaction": {
+    "agentTurns": 1,
+    "userMessages": 0,
+    "nativeRounds": 4,
+    "humanInputs": 4,
+    "questionsAsked": 8,
+    "approvalGates": 1,
+    "decisionQuestions": 7
+  },
+  "questionQuality": {
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 6,
+    "withSingleAxis": 7,
+    "recommendationAccepted": 7,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 0.857,
+    "axisPurityRate": 1,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 8,
+    "coreSettled": 3,
+    "coreTotal": 3,
+    "coreRate": 1,
+    "depthSettled": 3,
+    "depthTotal": 5,
+    "depthRate": 0.6,
+    "asked": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting"
+    ],
+    "resolvedFromRepository": [],
+    "userVolunteered": [],
+    "missed": [
+      "case-insensitive-fs",
+      "preview-mode"
+    ],
+    "closureRate": 0.75,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 6,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "notes": "The session clearly declared a bounded path, avoided forbidden questions, and implemented most explicitly settled behavior with focused tests. It missed case-insensitive filesystem semantics and preview policy, while the implementation cannot strictly guarantee either acceptance requirement because preflight-to-rename races can overwrite a newly created target and rollback is explicitly allowed to fail incompletely."
+}

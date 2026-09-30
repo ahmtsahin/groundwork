@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The agent asked the user to choose among change-based invalidation, an ad hoc `--fresh` flag, and a global TTL reduction; the user selected change-based invalidation."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The offered and selected policy was to invalidate cached ranges whenever `orders.json` changes, and the user strengthened this with “It must not miss changes.”"
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "Before questioning, the agent cited the repository-established ten-minute nightly constraint and the need to preserve caching, then retained the range cache."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The first question explicitly contrasted automatic invalidation, a `--fresh` flag, and a global TTL change, and the user chose automatic invalidation."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "user_volunteered",
+      "justification": "The user added unprompted that “each export must stay consistent to one snapshot.”"
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The approval gate described reading and processing the same initial byte snapshot, which entails finishing from that snapshot if the source changes during the export, and the user approved it."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The approval gate explicitly proposed SHA-256 over the source bytes and fingerprint comparison, and the user approved that design."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "user_volunteered",
+      "justification": "After approving the design, the user independently specified “Keep failures loud with no output file.”"
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "The user only said retries must not hang; nobody settled whether racing reads should be retried or established a concrete retry bound before the agent silently implemented no retries."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 2,
+    "approvalGates": 1,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 1
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session declared the correct bounded path, presented three materially distinct solution shapes, and implemented the selected content-fingerprint design while preserving the repository constraints. Its main weakness is depth: retry behavior was not fully decided, and several deeper choices were bundled into a late approval gate rather than independently interrogated.",
+  "rubricMaterialCount": 9
+}

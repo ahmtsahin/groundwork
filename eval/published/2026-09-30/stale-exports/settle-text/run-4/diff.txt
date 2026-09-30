@@ -1,0 +1,207 @@
+ADDED docs/decisions/2026-09-30-explicit-fresh-exports.md
+# Explicit fresh exports
+
+## Request as understood
+
+Fix stale ad hoc report exports without weakening the disk caching that keeps the nightly batch within its ten-minute window. Finance needs a clear, shareable command-line flag, and the CSV columns must not change.
+
+## Path
+
+Bounded. The export and disk-cache flow already exists in `src/exporter.js` and `src/cache.js`; this change adds an option to that flow.
+
+## Questions and answers
+
+1. When `data/orders.json` changes, what should an export do? **Add an explicit fresh mode**, leaving the cached default intact for the nightly batch.
+2. What should the public flag be named? **`--fresh`**, used as `reportkit <from> <to> --fresh`.
+3. What should a fresh run do to the shared cache? **Replace the range's cache** with the current result.
+4. What should repeated `--fresh` flags do? **Behave as one flag**.
+5. Is the resolved contract complete and correct? **Yes; implement it.**
+
+## Probe ledger
+
+1. Scope exclusions — no aliases, environment setting, automatic source invalidation, nightly-batch change, or CSV-column change: **user:** freshness is opt-in through `--fresh`; ordinary/nightly exports retain caching and CSV columns remain unchanged.
+2. Empty result — a range with no matching orders produces no rows, and `toCsv` still produces its header: **repository:** `src/store.js` filters to an empty array and `src/exporter.js` always prepends the fixed header.
+3. Duplicate input — duplicate matching source rows are exported without deduplication: **repository:** `src/store.js` filters rows and `src/exporter.js` maps every result.
+4. Concurrent input change — the operation is one synchronous export and the writer is the upstream sync job that rewrites `data/orders.json`; if a valid newer file arrives after the synchronous load begins, this invocation finishes from the successfully loaded snapshot and the next fresh invocation sees the newer input: **repository:** `README.md`, `src/store.js` (`readFileSync`), and `src/exporter.js`.
+5. Partial invocation — either missing positional date prints usage and exits nonzero: **repository:** `src/cli.js`.
+6. Repeated option — `--fresh --fresh` behaves as one Boolean flag: **user:** question 4, repeated `--fresh` is idempotent.
+7. Failed input — unreadable or malformed `data/orders.json`, or malformed cached JSON on an ordinary run, fails the invocation rather than emitting CSV: **repository:** uncaught `readFileSync`/`JSON.parse` failures in `src/store.js` and `src/cache.js`.
+8. State location — cached rows remain under `.reportkit-cache` in the working directory: **repository:** `CACHE_DIR` and `cachePath` in `src/cache.js`.
+9. State lifetime — ordinary cache entries retain the six-hour TTL; a successful fresh run replaces the selected range entry: **user:** questions 1 and 3, cached default plus cache replacement.
+10. Migration — existing cache payloads remain readable and require no migration: **repository:** the `{ writtenAt, rows }` payload in `src/cache.js` is unchanged.
+11. Shape readers — Google Sheets consumes the CSV column order and reportkit alone reads its private cache payload: **repository:** `README.md`, `test/exporter.test.js`, and `src/cache.js`.
+12. Compatibility — existing two-argument commands retain cached behavior and CSV stays `id,placedAt,total,status`: **user:** explicit fresh mode, unchanged nightly caching, and no CSV-column changes.
+13. Authorization — this local internal CLI introduces no user identity, remote endpoint, or new trust boundary: **cannot arise:** the change only passes a Boolean option from `src/cli.js` to the existing local exporter.
+14. Validation — positional arguments retain their existing presence check and `--fresh` is recognized by exact token match: **repository:** `src/cli.js` and `src/options.js`.
+15. Recording — the only persistent record is the existing cache payload of timestamp and rows; no audit log is added: **repository:** `writeCache` in `src/cache.js`.
+16. Failure shown to the user — missing dates show the existing usage message; file and JSON failures remain nonzero uncaught errors: **repository:** `src/cli.js`, `src/store.js`, and `src/cache.js`.
+17. State after failure — source-read failure happens before a cache write; a cache-write failure retains the existing direct-write behavior and may leave the prior or a partially written cache file: **repository:** operation order in `src/exporter.js` and direct `writeFileSync` in `src/cache.js`.
+18. Seam placement — extend the existing CLI and exporter option surface rather than opening another interface: **user:** questions 1, 2, and 5, explicit `--fresh` mode and confirmed contract.
+
+## Resolved contract
+
+- `reportkit <from> <to>` continues using the six-hour disk cache.
+- `reportkit <from> <to> --fresh` bypasses a cached result, reads current orders, emits them, and replaces that range's cache.
+- Repeating `--fresh` has the same effect as supplying it once.
+- CSV remains `id,placedAt,total,status`.
+- No alias, environment setting, automatic invalidation, cache migration, or nightly-batch change is included.
+- Existing missing-argument and malformed/unreadable-data failure behavior remains intact.
+
+## Verification
+
+`node --test --experimental-test-isolation=none test/*.test.js` passed 2 tests on Node 22.23.2. Non-isolated mode was required because the managed Windows sandbox rejected the test runner's child-process isolation with `spawn EPERM`.
+
+
+ADDED src/options.js
+export function exportOptions(args) {
+  return { fresh: args.includes("--fresh") };
+}
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+import { exportOptions } from "./options.js";
+
+const [, , from, to, ...options] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to, exportOptions(options))));
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to, { fresh = false } = {}) {
+  if (!fresh) {
+    const cached = readCache(cacheKey(from, to));
+    if (cached) return cached;
+  }
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { exportOrders, toCsv } from "../src/exporter.js";
+import { exportOptions } from "../src/options.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("--fresh bypasses and replaces the range cache, even when repeated", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-test-"));
+  const originalDirectory = process.cwd();
+  const run = (options = {}) => exportOrders("2026-01-01", "2026-01-31", options);
+  const writeOrders = (id) => writeFileSync(
+    path.join(directory, "data", "orders.json"),
+    JSON.stringify([{ id, placedAt: "2026-01-02", total: 10, status: "paid" }])
+  );
+
+  try {
+    mkdirSync(path.join(directory, "data"));
+    process.chdir(directory);
+    writeOrders("cached");
+    assert.equal(run()[0].id, "cached");
+
+    writeOrders("current");
+    assert.equal(run()[0].id, "cached");
+
+    const repeatedFresh = exportOptions(["--fresh", "--fresh"]);
+    assert.deepEqual(repeatedFresh, { fresh: true });
+    assert.equal(run(repeatedFresh)[0].id, "current");
+
+    writeOrders("newer");
+    assert.equal(run()[0].id, "current");
+  } finally {
+    process.chdir(originalDirectory);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

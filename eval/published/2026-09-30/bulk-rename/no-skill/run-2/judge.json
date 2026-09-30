@@ -1,0 +1,74 @@
+{
+  "process": {
+    "pathStated": "none",
+    "approachesPresented": 0,
+    "distinctApproaches": 0,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": false,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "missed",
+      "justification": "The agent silently implemented “skip existing targets and continue” without asking the user or citing a repository fact that establishes this policy."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "missed",
+      "justification": "Although README.md identifies partial application as the complaint, the agent proceeded with partial renames rather than settling whether the run must be atomic."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "missed",
+      "justification": "The agent only special-cased identical source and target paths and never settled whether already-conforming files belong in the rename set."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "missed",
+      "justification": "The implementation treats every occupied target as a skip and never addresses targets whose occupants are scheduled to move later in the same run."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "missed",
+      "justification": "Despite README.md documenting accidental repeated runs, the agent did not settle or test the behavior of a second identical run."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The path.resolve equality check does not explicitly settle case-only renames on case-insensitive filesystems."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "missed",
+      "justification": "The agent added stderr messages for skipped files but never settled refusal content or exit status, and the run is not refused."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "missed",
+      "justification": "No preview or confirmation policy was discussed or otherwise settled."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 0,
+    "approvalGates": 0,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 0,
+    "withConcreteOptions": 0,
+    "withRecommendation": 0,
+    "withRepositoryEvidence": 0
+  },
+  "outcome": {
+    "decisionsHonored": [],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": []
+  },
+  "notes": "The session made an unapproved policy choice and implemented skip-and-continue behavior, directly preserving the partial-application failure the task needed to eliminate. Its existence check also has a race on platforms where rename overwrites, so it does not guarantee that existing files are never overwritten.",
+  "rubricMaterialCount": 8
+}

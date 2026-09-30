@@ -1,0 +1,91 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first native question asked whether to refresh on source change, always read the source, or add a fresh mode; the user chose “Add fresh mode.”"
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The freshness question was triggered whenever `orders.json` was newer than cached rows, and the chosen fresh mode was subsequently defined to bypass cached data entirely."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "resolved_from_repository",
+      "justification": "README.md states that the roughly 400-run nightly batch must finish within ten minutes, needs the disk cache to do so, and tolerates day-old data."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The user was asked to choose between a `--fresh` flag and an environment variable and selected `--fresh`."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "resolved_from_repository",
+      "justification": "The agent established from `src/store.js` and `src/exporter.js` that one synchronous read is parsed and fully converted before output, yielding one snapshot rather than mixed reads."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "asked",
+      "justification": "The mid-run question asked whether to finish the successfully read snapshot or restart when a newer source lands, and the user chose “Finish snapshot.”"
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The cache-effect question offered bypassing the cache, and the user selected it, eliminating stale-entry detection from the fresh path."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "asked",
+      "justification": "The user chose a concise `reportkit:` error after retries, while the earlier failure question also established nonzero failure without stale fallback."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "asked",
+      "justification": "The user first chose “Retry then fail” and then selected five total attempts with 250 ms gaps."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 8,
+    "approvalGates": 1,
+    "withSingleAxis": 5,
+    "recommendationAccepted": 3,
+    "withConcreteOptions": 7,
+    "withRecommendation": 7,
+    "withRepositoryEvidence": 6
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output",
+      "retry-policy"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session declared the expected bounded path before questioning, presented three genuinely distinct top-level approaches first, and then settled the relevant interface, cache, concurrency, retry, and failure behavior with repository-specific evidence. It was thorough and the implementation visibly honored every settled decision, though the final approval checkpoint was an unnecessary gate and the retry-budget options varied two parameters at once.",
+  "rubricMaterialCount": 9
+}

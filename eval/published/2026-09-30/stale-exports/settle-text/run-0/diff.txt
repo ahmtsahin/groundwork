@@ -1,0 +1,301 @@
+ADDED docs/decisions/2026-09-30-explicit-fresh-exports.md
+# Explicit fresh exports
+
+## Request as understood
+
+Fix occasionally stale reportkit exports without changing the CSV columns. Preserve the cached default used by the nightly batch, and add an explicit ad hoc mode whose output is no more than five minutes old and never more than fifteen minutes old.
+
+## Path
+
+Bounded. The CLI, export flow, source store, and disk cache already existed; this change extends that flow with one option and a fresh-read policy.
+
+## Questions and answers
+
+1. Cache reuse policy: add separate fresh and cached CLI modes. Cached mode remains the default for nightly runs; explicit fresh mode is for ad hoc exports.
+2. CLI interface: `reportkit --fresh <from> <to>`.
+3. Fresh-mode cache policy: bypass cached reads and read the source every time.
+4. Invalid source: retry twice, then fail loudly with no CSV.
+5. Retry delay: 100 ms between attempts, for about 200 ms maximum added delay.
+6. Valid source update during export: finish from the successfully read snapshot.
+7. Invalid flag usage: reject duplicate, misplaced, and unknown flags with usage text and a nonzero exit.
+8. Fresh-run cache write: update the shared range cache after a successful fresh export.
+9. Contract confirmation: implement the resolved contract without revision.
+
+## Probe ledger
+
+1. Scope exclusions — **user:** cached mode remains the default; do not change CSV columns, upstream sync, or default cache freshness.
+2. Empty input — **repository:** an empty filtered result produces the header only in `src/exporter.js` (`toCsv`).
+3. Duplicate input — **user:** duplicate or misplaced `--fresh` is rejected with usage text and a nonzero exit.
+4. Concurrent input change — **user:** while a fresh export is in flight, if the upstream sync writer described in `README.md` installs a valid newer `data/orders.json`, finish from the successfully read snapshot; the next run sees the newer input.
+5. Partial input — **user:** a partial source that is malformed follows the two-retry failure policy; a successfully parsed source is treated as the run's consistent snapshot.
+6. Repeated input — **user:** every `--fresh` invocation bypasses cached reads.
+7. Failed input — **user:** missing, unreadable, or malformed `data/orders.json` is retried twice at 100 ms intervals, then fails loudly with no CSV.
+8. Where state lives — **repository:** cached range rows live under `.reportkit-cache` via `CACHE_DIR` in `src/cache.js`; source orders live in `data/orders.json` via `src/store.js`.
+9. How long state survives — **user:** a successful fresh run updates the existing shared cache and restarts its six-hour `DEFAULT_TTL_MS` lifetime from `src/cache.js`.
+10. What migrates — **cannot arise:** no persistent format changes; fresh mode writes the existing `{ writtenAt, rows }` payload through `writeCache` in `src/cache.js`.
+11. Who else reads the shape — **repository:** the Google Sheets import reads the CSV and the nightly batch invokes the CLI, both listed in `README.md`.
+12. Whether compatibility breaks — **user:** preserve existing `reportkit <from> <to>` calls and exact `id,placedAt,total,status` columns; the column order is asserted in `test/exporter.test.js`.
+13. Who may perform the operation — **cannot arise:** this is a local internal CLI with no authorization interface or network boundary in `src/cli.js` or `package.json`.
+14. What is validated — **user:** accept `--fresh` only once in the leading position and reject unknown options; existing date-range semantics remain those of `ordersForRange` in `src/store.js`.
+15. What is recorded — **repository:** successful results are recorded only in the existing range cache by `writeCache` in `src/cache.js`; no audit or telemetry facility exists in the repository.
+16. What the user sees on failure — **user:** an explicit stderr error, nonzero exit, and no stdout CSV.
+17. What failure leaves behind — **user:** unsuccessful fresh runs do not replace the existing cache; the cache write occurs only after a successful source read in `src/exporter.js`.
+18. Seam placement — **user:** extend the existing CLI with leading `--fresh`; do not open a new API or subsystem.
+
+## Resolved contract
+
+`reportkit --fresh <from> <to>` bypasses cached reads, reads and filters `data/orders.json`, emits CSV with the unchanged `id,placedAt,total,status` order, and updates the shared range cache after success. A missing, unreadable, or malformed source gets two retries 100 ms apart, then produces an explicit stderr error, a nonzero exit, and no CSV. A valid snapshot remains the input for that run even if upstream installs a newer file during execution. The existing cached invocation and six-hour TTL remain unchanged. Invalid option shapes are rejected.
+
+## Verification
+
+`node test/exporter.test.js` passed all five tests, covering column stability, fresh cache bypass and refresh, failure residue, CLI option validation, and failure output. The configured `npm test` / `node --test test/*.test.js` could not start Node's test worker in the execution sandbox and failed before loading the test file with `spawn EPERM`; this is an environment restriction rather than a test failure.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { pathToFileURL } from "node:url";
+import { exportOrders, toCsv } from "./exporter.js";
+
+export function run(args, stdout = process.stdout, stderr = process.stderr) {
+  const fresh = args.length === 3 && args[0] === "--fresh";
+  const validCachedInvocation = args.length === 2 && !args.some((arg) => arg.startsWith("--"));
+  const validFreshInvocation = fresh && !args.slice(1).some((arg) => arg.startsWith("--"));
+
+  if (!validCachedInvocation && !validFreshInvocation) {
+    stderr.write("usage: reportkit [--fresh] <from> <to>\n");
+    return 1;
+  }
+
+  const [from, to] = fresh ? args.slice(1) : args;
+
+  try {
+    stdout.write(toCsv(exportOrders(from, to, { fresh })));
+    return 0;
+  } catch (error) {
+    stderr.write(`reportkit: ${error.message}\n`);
+    return 1;
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = run(process.argv.slice(2));
+}
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+const FRESH_RETRY_COUNT = 2;
+const FRESH_RETRY_DELAY_MS = 100;
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+function wait(ms) {
+  if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function readOrdersWithRetry(from, to, retryCount, retryDelayMs) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return ordersForRange(from, to);
+    } catch (error) {
+      if (attempt >= retryCount) throw error;
+      wait(retryDelayMs);
+    }
+  }
+}
+
+export function exportOrders(from, to, options = {}) {
+  const {
+    fresh = false,
+    retryCount = FRESH_RETRY_COUNT,
+    retryDelayMs = FRESH_RETRY_DELAY_MS
+  } = options;
+
+  if (!fresh) {
+    const cached = readCache(cacheKey(from, to));
+    if (cached) return cached;
+  }
+
+  const orders = fresh
+    ? readOrdersWithRetry(from, to, retryCount, retryDelayMs)
+    : ordersForRange(from, to);
+  const rows = orders.map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { run } from "../src/cli.js";
+import { exportOrders, toCsv } from "../src/exporter.js";
+
+function inTemporaryWorkingDirectory(run) {
+  const originalDirectory = process.cwd();
+  const directory = mkdtempSync(path.join(tmpdir(), "reportkit-"));
+  process.chdir(directory);
+  try {
+    mkdirSync("data");
+    return run(directory);
+  } finally {
+    process.chdir(originalDirectory);
+  }
+}
+
+function writeOrders(rows) {
+  writeFileSync("data/orders.json", JSON.stringify(rows), "utf8");
+}
+
+function capture() {
+  let value = "";
+  return {
+    stream: { write(chunk) { value += chunk; } },
+    value: () => value
+  };
+}
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+test("fresh exports bypass cached rows and refresh the shared cache", () => {
+  inTemporaryWorkingDirectory(() => {
+    writeOrders([{ id: "old", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-03")[0].id, "old");
+
+    writeOrders([{ id: "new", placedAt: "2026-01-02", total: 20, status: "paid" }]);
+    assert.equal(exportOrders("2026-01-01", "2026-01-03")[0].id, "old");
+    assert.equal(
+      exportOrders("2026-01-01", "2026-01-03", { fresh: true, retryDelayMs: 0 })[0].id,
+      "new"
+    );
+    assert.equal(exportOrders("2026-01-01", "2026-01-03")[0].id, "new");
+  });
+});
+
+test("fresh exports retry twice and leave the existing cache untouched on failure", () => {
+  inTemporaryWorkingDirectory(() => {
+    writeOrders([{ id: "cached", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    exportOrders("2026-01-01", "2026-01-03");
+    writeFileSync("data/orders.json", "not json", "utf8");
+
+    assert.throws(() =>
+      exportOrders("2026-01-01", "2026-01-03", { fresh: true, retryDelayMs: 0 })
+    );
+    assert.equal(exportOrders("2026-01-01", "2026-01-03")[0].id, "cached");
+  });
+});
+
+test("CLI accepts only a leading --fresh flag", () => {
+  inTemporaryWorkingDirectory(() => {
+    writeOrders([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+    const stdout = capture();
+    const stderr = capture();
+    assert.equal(run(["--fresh", "2026-01-01", "2026-01-03"], stdout.stream, stderr.stream), 0);
+    assert.match(stdout.value(), /^id,placedAt,total,status\n/);
+    assert.equal(stderr.value(), "");
+
+    for (const invalidArgs of [
+      ["2026-01-01", "2026-01-03", "--fresh"],
+      ["--fresh", "--fresh", "2026-01-01", "2026-01-03"],
+      ["--unknown", "2026-01-01", "2026-01-03"]
+    ]) {
+      const invalidStdout = capture();
+      const invalidStderr = capture();
+      assert.notEqual(run(invalidArgs, invalidStdout.stream, invalidStderr.stream), 0);
+      assert.equal(invalidStdout.value(), "");
+      assert.match(invalidStderr.value(), /usage: reportkit/);
+    }
+  });
+});
+
+test("fresh CLI failure is loud and emits no CSV", () => {
+  inTemporaryWorkingDirectory(() => {
+    writeFileSync("data/orders.json", "not json", "utf8");
+    const stdout = capture();
+    const stderr = capture();
+    const status = run(["--fresh", "2026-01-01", "2026-01-03"], stdout.stream, stderr.stream);
+
+    assert.notEqual(status, 0);
+    assert.equal(stdout.value(), "");
+    assert.match(stderr.value(), /^reportkit:/);
+  });
+});

@@ -1,0 +1,185 @@
+MODIFIED README.md
+--- before ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+## Known rough edge
+
+If a target name already exists the run stops partway with an EEXIST error, and
+the files renamed before that point stay renamed. This is what people complain
+about.
+
+--- after ---
+# renamer
+
+Bulk-renames files in a single directory.
+
+    renamer <dir> <pattern> <replacement>
+
+`#` in the replacement is substituted with a sequence number.
+
+## How it is used
+
+- Photographers run it on a card dump before importing, typically 200-800 files.
+- It is run from scripts as well as by hand.
+- People frequently run it twice on the same directory by mistake.
+
+## Out of scope
+
+Undo. We decided in 1.1 not to keep a rename journal; recovering from a bad run
+is the user's problem and that has not changed.
+
+Before changing any files, renamer checks the complete operation for conflicts.
+Names occupied by another file in the same batch are handled automatically; an
+unrelated existing target rejects the operation without applying a partial run.
+
+
+MODIFIED src/rename.js
+--- before ---
+import { renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  for (const step of plan) {
+    // Throws EEXIST on collision and leaves earlier renames applied.
+    renameSync(path.join(directory, step.from), path.join(directory, step.to));
+  }
+}
+
+--- after ---
+import { existsSync, renameSync } from "node:fs";
+import path from "node:path";
+
+import { matchFiles } from "./match.js";
+
+export function planRenames(directory, pattern, replacement) {
+  return matchFiles(directory, pattern).map((name, index) => ({
+    from: name,
+    to: replacement.replace("#", String(index + 1).padStart(3, "0"))
+  }));
+}
+
+export function applyRenames(directory, plan) {
+  const steps = plan.filter((step) => step.from !== step.to);
+  const key = (name) => process.platform === "win32" ? name.toLowerCase() : name;
+  const sources = new Set(steps.map((step) => key(step.from)));
+  const targets = new Set();
+
+  // Check the whole operation before touching the directory. A target occupied
+  // by another source is safe: that file will be moved aside in the first pass.
+  for (const step of steps) {
+    const targetKey = key(step.to);
+    if (targets.has(targetKey)) {
+      throw new Error(`multiple files would be renamed to ${step.to}`);
+    }
+    targets.add(targetKey);
+
+    if (!existsSync(path.join(directory, step.from))) {
+      throw new Error(`source does not exist: ${step.from}`);
+    }
+    if (!sources.has(targetKey) && existsSync(path.join(directory, step.to))) {
+      const error = new Error(`target already exists: ${step.to}`);
+      error.code = "EEXIST";
+      throw error;
+    }
+  }
+
+  const staged = steps.map((step, index) => {
+    let temporary;
+    do {
+      temporary = `.renamer-${process.pid}-${index}-${Math.random().toString(16).slice(2)}.tmp`;
+    } while (existsSync(path.join(directory, temporary)));
+    return { ...step, temporary };
+  });
+
+  for (const step of staged) {
+    renameSync(path.join(directory, step.from), path.join(directory, step.temporary));
+  }
+  for (const step of staged) {
+    renameSync(path.join(directory, step.temporary), path.join(directory, step.to));
+  }
+}
+
+
+MODIFIED test/rename.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { applyRenames, planRenames } from "../src/rename.js";
+
+test("the plan numbers matches from one and pads to three digits", () => {
+  const plan = planRenames("fixtures", "*.jpg", "photo-#.jpg");
+  assert.deepEqual(plan.slice(0, 2), [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "b.jpg", to: "photo-002.jpg" }
+  ]);
+});
+
+test("renames through a name occupied by another file in the batch", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-"));
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "photo-001.jpg"), "existing");
+
+  applyRenames(directory, [
+    { from: "a.jpg", to: "photo-001.jpg" },
+    { from: "photo-001.jpg", to: "photo-002.jpg" }
+  ]);
+
+  assert.deepEqual(readdirSync(directory).sort(), ["photo-001.jpg", "photo-002.jpg"]);
+});
+
+test("an external collision rejects the entire plan before renaming anything", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "renamer-"));
+  writeFileSync(path.join(directory, "a.jpg"), "a");
+  writeFileSync(path.join(directory, "b.jpg"), "b");
+  writeFileSync(path.join(directory, "taken.jpg"), "taken");
+
+  assert.throws(() => applyRenames(directory, [
+    { from: "a.jpg", to: "free.jpg" },
+    { from: "b.jpg", to: "taken.jpg" }
+  ]), { code: "EEXIST" });
+  assert.deepEqual(readdirSync(directory).sort(), ["a.jpg", "b.jpg", "taken.jpg"]);
+});

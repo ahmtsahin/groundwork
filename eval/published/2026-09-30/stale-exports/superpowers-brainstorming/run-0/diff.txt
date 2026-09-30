@@ -1,0 +1,371 @@
+ADDED test/cli.test.js
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { main, parseArgs } from "../src/cli.js";
+
+function capture() {
+  let value = "";
+  return {
+    stream: { write(chunk) { value += chunk; } },
+    value() { return value; }
+  };
+}
+
+test("CLI uses fresh mode by default and accepts --cached", () => {
+  assert.deepEqual(parseArgs(["2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01", to: "2026-01-31", cached: false
+  });
+  assert.deepEqual(parseArgs(["--cached", "2026-01-01", "2026-01-31"]), {
+    from: "2026-01-01", to: "2026-01-31", cached: true
+  });
+  assert.equal(parseArgs(["--unknown", "2026-01-01", "2026-01-31"]), null);
+});
+
+test("CLI emits no CSV when the source snapshot is invalid", () => {
+  const stdout = capture();
+  const stderr = capture();
+  const code = main(["2026-01-01", "2026-01-31"], {
+    exportRows() { throw new Error("Unable to read a valid orders snapshot after 3 attempts"); },
+    stdout: stdout.stream,
+    stderr: stderr.stream
+  });
+
+  assert.equal(code, 1);
+  assert.equal(stdout.value(), "");
+  assert.match(stderr.value(), /Unable to read a valid orders snapshot after 3 attempts/);
+});
+
+
+ADDED test/store.test.js
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { loadOrders } from "../src/store.js";
+
+test("loadOrders retries up to three times", () => {
+  let reads = 0;
+  let waits = 0;
+  const rows = loadOrders({
+    readFile() {
+      reads += 1;
+      if (reads < 3) return "{";
+      return "[]";
+    },
+    waitForRetry() { waits += 1; }
+  });
+
+  assert.deepEqual(rows, []);
+  assert.equal(reads, 3);
+  assert.equal(waits, 2);
+});
+
+test("loadOrders fails clearly after three invalid snapshots", () => {
+  let reads = 0;
+
+  assert.throws(
+    () => loadOrders({
+      readFile: () => { reads += 1; return "{"; },
+      waitForRetry() {}
+    }),
+    /Unable to read a valid orders snapshot after 3 attempts/
+  );
+  assert.equal(reads, 3);
+});
+
+
+MODIFIED README.md
+--- before ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes CSV to stdout.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+## Not decided
+
+Whether ad hoc runs should see fresher data than the nightly batch does.
+
+--- after ---
+# reportkit
+
+Internal CLI that exports order rows as CSV.
+
+## How it runs today
+
+- `reportkit <from> <to>` writes fresh CSV data to stdout.
+- `reportkit --cached <from> <to>` enables the six-hour disk cache for batch runs.
+- Finance runs it ad hoc during the day.
+- A nightly batch (`ops/nightly.sh`, not in this repo) calls it ~400 times and
+  must finish inside a 10 minute window. The disk cache added in 2.1.0 is what
+  keeps it inside that window.
+- The upstream sync job rewrites `data/orders.json` roughly every 15 minutes.
+
+## Known consumers
+
+- A Google Sheets import that depends on the exact 2.x column order.
+- The nightly batch, which tolerates data up to a day old.
+
+Normal ad hoc runs retry an unreadable source snapshot three times, then fail
+without writing partial or cached CSV output.
+
+
+MODIFIED src/cli.js
+--- before ---
+#!/usr/bin/env node
+import { exportOrders, toCsv } from "./exporter.js";
+
+const [, , from, to] = process.argv;
+
+if (!from || !to) {
+  console.error("usage: reportkit <from> <to>");
+  process.exit(1);
+}
+
+process.stdout.write(toCsv(exportOrders(from, to)));
+
+--- after ---
+#!/usr/bin/env node
+import { pathToFileURL } from "node:url";
+import { exportOrders, toCsv } from "./exporter.js";
+
+export function parseArgs(args) {
+  const cached = args[0] === "--cached";
+  const range = cached ? args.slice(1) : args;
+  const [from, to] = range;
+
+  if (range.length !== 2 || !from || !to || (!cached && args[0]?.startsWith("--"))) {
+    return null;
+  }
+
+  return { from, to, cached };
+}
+
+export function main(
+  args,
+  { exportRows = exportOrders, stdout = process.stdout, stderr = process.stderr } = {}
+) {
+  const options = parseArgs(args);
+  if (!options) {
+    stderr.write("usage: reportkit [--cached] <from> <to>\n");
+    return 1;
+  }
+
+  try {
+    stdout.write(toCsv(exportRows(options.from, options.to, { cached: options.cached })));
+    return 0;
+  } catch (error) {
+    stderr.write(`reportkit: ${error.message}\n`);
+    return 1;
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = main(process.argv.slice(2));
+}
+
+
+MODIFIED src/exporter.js
+--- before ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to) {
+  const cached = readCache(cacheKey(from, to));
+  if (cached) return cached;
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  writeCache(cacheKey(from, to), rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+--- after ---
+import { readCache, writeCache } from "./cache.js";
+import { ordersForRange } from "./store.js";
+
+function cacheKey(from, to) {
+  return `orders-${from}-${to}`;
+}
+
+export function exportOrders(from, to, { cached = false } = {}) {
+  const key = cacheKey(from, to);
+  if (cached) {
+    const cachedRows = readCache(key);
+    if (cachedRows) return cachedRows;
+  }
+
+  const rows = ordersForRange(from, to).map((order) => ({
+    id: order.id,
+    placedAt: order.placedAt,
+    total: order.total,
+    status: order.status
+  }));
+
+  if (cached) writeCache(key, rows);
+  return rows;
+}
+
+export function toCsv(rows) {
+  const header = "id,placedAt,total,status";
+  const body = rows.map((r) => `${r.id},${r.placedAt},${r.total},${r.status}`);
+  return [header, ...body].join("\n");
+}
+
+
+MODIFIED src/store.js
+--- before ---
+import { readFileSync } from "node:fs";
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders() {
+  return JSON.parse(readFileSync("data/orders.json", "utf8"));
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+--- after ---
+import { readFileSync } from "node:fs";
+
+const retrySignal = new Int32Array(new SharedArrayBuffer(4));
+
+function wait(milliseconds) {
+  Atomics.wait(retrySignal, 0, 0, milliseconds);
+}
+
+// The upstream sync job rewrites data/orders.json roughly every 15 minutes.
+export function loadOrders({
+  attempts = 3,
+  readFile = readFileSync,
+  retryDelayMs = 25,
+  waitForRetry = wait
+} = {}) {
+  let lastError;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return JSON.parse(readFile("data/orders.json", "utf8"));
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < attempts) waitForRetry(retryDelayMs);
+    }
+  }
+
+  throw new Error(
+    `Unable to read a valid orders snapshot after ${attempts} attempts: ${lastError.message}`,
+    { cause: lastError }
+  );
+}
+
+export function ordersForRange(from, to) {
+  return loadOrders().filter((order) => order.placedAt >= from && order.placedAt <= to);
+}
+
+
+MODIFIED test/exporter.test.js
+--- before ---
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { toCsv } from "../src/exporter.js";
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});
+
+--- after ---
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { exportOrders, toCsv } from "../src/exporter.js";
+
+function inTempProject(run) {
+  const originalCwd = process.cwd();
+  const directory = mkdtempSync(path.join(os.tmpdir(), "reportkit-"));
+  const dataDirectory = path.join(directory, "data");
+  const cacheDirectory = path.join(directory, ".reportkit-cache");
+
+  try {
+    process.chdir(directory);
+    return run({ dataDirectory, cacheDirectory });
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function writeOrders(dataDirectory, rows) {
+  mkdirSync(dataDirectory, { recursive: true });
+  writeFileSync(path.join(dataDirectory, "orders.json"), JSON.stringify(rows), "utf8");
+}
+
+const firstSnapshot = [
+  { id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }
+];
+const secondSnapshot = [
+  { id: "a2", placedAt: "2026-01-03", total: 20, status: "refunded" }
+];
+
+test("normal exports always use the latest source snapshot", () => {
+  inTempProject(({ dataDirectory }) => {
+    writeOrders(dataDirectory, firstSnapshot);
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-31"), firstSnapshot);
+
+    writeOrders(dataDirectory, secondSnapshot);
+    assert.deepEqual(exportOrders("2026-01-01", "2026-01-31"), secondSnapshot);
+  });
+});
+
+test("cached exports reuse the source snapshot", () => {
+  inTempProject(({ dataDirectory }) => {
+    writeOrders(dataDirectory, firstSnapshot);
+    assert.deepEqual(
+      exportOrders("2026-01-01", "2026-01-31", { cached: true }),
+      firstSnapshot
+    );
+
+    writeOrders(dataDirectory, secondSnapshot);
+    assert.deepEqual(
+      exportOrders("2026-01-01", "2026-01-31", { cached: true }),
+      firstSnapshot
+    );
+  });
+});
+
+test("toCsv keeps the 2.x column order that downstream Sheets imports depend on", () => {
+  const csv = toCsv([{ id: "a1", placedAt: "2026-01-02", total: 10, status: "paid" }]);
+  assert.equal(csv.split("\n")[0], "id,placedAt,total,status");
+});

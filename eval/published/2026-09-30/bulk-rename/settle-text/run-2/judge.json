@@ -1,0 +1,85 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": false
+  },
+  "decisions": [
+    {
+      "id": "collision-policy",
+      "disposition": "asked",
+      "justification": "Question 1 asked whether conflicts should reject the entire plan, skip steps, or advance numbering; the user selected whole-plan rejection with every conflict reported."
+    },
+    {
+      "id": "atomicity",
+      "disposition": "asked",
+      "justification": "Question 4 asked how broadly no-partial-changes should apply, and the later transaction-model question led the user to choose an unchanged input plus atomic sibling-output publication."
+    },
+    {
+      "id": "self-inclusion",
+      "disposition": "asked",
+      "justification": "Question 7 explicitly asked how exact self-mappings should behave, and the user chose successful no-ops that are not listed as changes."
+    },
+    {
+      "id": "transient-collision",
+      "disposition": "asked",
+      "justification": "Questions 3 and 9 asked whether a target occupied by another source scheduled to move should remain a conflict; the user chose rejection."
+    },
+    {
+      "id": "idempotency",
+      "disposition": "asked",
+      "justification": "Questions 7 and architectural question 8 asked what repeated/self-only runs do; the user chose no publication and a `nothing changed` message."
+    },
+    {
+      "id": "case-insensitive-fs",
+      "disposition": "missed",
+      "justification": "The agent never asked whether case-only names clash or are no-ops, despite silently implementing Windows-specific case folding in `key()`."
+    },
+    {
+      "id": "failure-reporting",
+      "disposition": "asked",
+      "justification": "Questions 2 and 9 asked about stdout, stderr, exit status, and diagnostic format; the user chose empty stdout on rejection, stable stderr lines, a summary, and nonzero exit."
+    },
+    {
+      "id": "preview-mode",
+      "disposition": "asked",
+      "justification": "Question 2 explicitly offered retaining the proposed plan on failed-run stdout versus printing nothing, and the user chose no preview output on rejection."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 23,
+    "approvalGates": 2,
+    "withSingleAxis": 19,
+    "recommendationAccepted": 19,
+    "withConcreteOptions": 21,
+    "withRecommendation": 21,
+    "withRepositoryEvidence": 9
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "collision-policy",
+      "atomicity",
+      "self-inclusion",
+      "transient-collision",
+      "idempotency",
+      "failure-reporting",
+      "preview-mode"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "no new runtime dependencies",
+      "single-directory, non-recursive behavior",
+      "user-facing output on stdout and diagnostics on stderr"
+    ],
+    "mustAchieveMet": [
+      "a run that cannot complete leaves every file unchanged",
+      "no existing file is ever overwritten"
+    ]
+  },
+  "notes": "The session was unusually thorough and visibly implemented nearly every settled behavior, including atomic publication, collision rejection, no-op reruns, and the stream contract. It over-interrogated the user and delayed the whole-approach choice until after many detail questions; it also never surfaced the case-insensitive-filesystem decision, instead encoding an assumption in the implementation.",
+  "rubricMaterialCount": 8
+}

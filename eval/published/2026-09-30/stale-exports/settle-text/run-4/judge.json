@@ -1,0 +1,90 @@
+{
+  "process": {
+    "pathStated": "bounded",
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "decisions": [
+    {
+      "id": "freshness-scope",
+      "disposition": "asked",
+      "justification": "The first question asked the user to choose among source-version invalidation, an explicit fresh mode, and a shorter global TTL; the user chose explicit fresh mode."
+    },
+    {
+      "id": "staleness-bound",
+      "disposition": "asked",
+      "justification": "The first question offered a fresh mode that would let ad hoc callers request current data, which the user selected."
+    },
+    {
+      "id": "nightly-budget",
+      "disposition": "asked",
+      "justification": "The first question explicitly contrasted preserving the cached default with alternatives that could make the nightly pass slower, and the user chose the cached-default option and reiterated the ten-minute requirement."
+    },
+    {
+      "id": "interface-shape",
+      "disposition": "asked",
+      "justification": "The user chose the explicit-fresh-mode approach and then selected the recommended `--fresh` CLI spelling in the flag-name question."
+    },
+    {
+      "id": "snapshot-consistency",
+      "disposition": "resolved_from_repository",
+      "justification": "The agent cited the existing synchronous source read and concluded that each invocation exports one loaded snapshot without asking the user."
+    },
+    {
+      "id": "concurrent-change",
+      "disposition": "resolved_from_repository",
+      "justification": "The agent stated that the synchronous read finishes from its successfully loaded snapshot, and the decision record attributes this behavior to `README.md`, `src/store.js`, and `src/exporter.js`."
+    },
+    {
+      "id": "change-detection",
+      "disposition": "asked",
+      "justification": "The first question explicitly offered source-version invalidation, global TTL reduction, or bypassing the cache on the fresh path; the user selected cache bypass."
+    },
+    {
+      "id": "failure-output",
+      "disposition": "resolved_from_repository",
+      "justification": "The agent cited `src/cli.js`, `src/store.js`, and `src/cache.js` for existing nonzero failures on missing, unreadable, or malformed input rather than asking the user."
+    },
+    {
+      "id": "retry-policy",
+      "disposition": "missed",
+      "justification": "The user was never asked whether a read racing the sync job should retry or what would bound retries, and the agent proceeded with the existing single-read behavior."
+    }
+  ],
+  "forbiddenAsked": [],
+  "questionQuality": {
+    "totalQuestions": 5,
+    "approvalGates": 1,
+    "withSingleAxis": 3,
+    "recommendationAccepted": 3,
+    "withConcreteOptions": 4,
+    "withRecommendation": 4,
+    "withRepositoryEvidence": 4
+  },
+  "outcome": {
+    "decisionsHonored": [
+      "freshness-scope",
+      "staleness-bound",
+      "nightly-budget",
+      "interface-shape",
+      "snapshot-consistency",
+      "concurrent-change",
+      "change-detection",
+      "failure-output"
+    ],
+    "decisionsLost": [],
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "notes": "The session clearly declared the bounded path, presented three genuinely different solution approaches, grounded every substantive question in repository evidence, and implemented the chosen `--fresh` contract with focused tests. It was not fully thorough at the depth tier because retry behavior during a sync race was never put to the user or otherwise normatively settled.",
+  "rubricMaterialCount": 9
+}

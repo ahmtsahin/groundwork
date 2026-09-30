@@ -1,0 +1,89 @@
+{
+  "arm": "superpowers-brainstorming",
+  "label": "brainstorming (obra/superpowers)",
+  "channel": "text",
+  "aborted": null,
+  "cost": {
+    "instructionChars": 17537,
+    "wallClockMs": 141120,
+    "tokens": {
+      "input": 315523,
+      "output": 5552,
+      "total": 321075
+    }
+  },
+  "interaction": {
+    "agentTurns": 3,
+    "userMessages": 2,
+    "nativeRounds": 0,
+    "humanInputs": 2,
+    "questionsAsked": 2,
+    "approvalGates": 1,
+    "decisionQuestions": 1
+  },
+  "questionQuality": {
+    "withConcreteOptions": 1,
+    "withRecommendation": 1,
+    "withRepositoryEvidence": 1,
+    "withSingleAxis": 0,
+    "recommendationAccepted": 1,
+    "optionRate": 1,
+    "recommendationRate": 1,
+    "evidenceRate": 1,
+    "axisPurityRate": 0,
+    "recommendationAccuracy": 1
+  },
+  "coverage": {
+    "materialCount": 9,
+    "coreSettled": 4,
+    "coreTotal": 4,
+    "coreRate": 1,
+    "depthSettled": 4,
+    "depthTotal": 5,
+    "depthRate": 0.8,
+    "asked": [
+      "freshness-scope",
+      "staleness-bound",
+      "interface-shape",
+      "concurrent-change",
+      "change-detection"
+    ],
+    "resolvedFromRepository": [
+      "nightly-budget"
+    ],
+    "userVolunteered": [
+      "snapshot-consistency",
+      "failure-output"
+    ],
+    "missed": [
+      "retry-policy"
+    ],
+    "closureRate": 0.889,
+    "forbiddenAsked": [],
+    "forbiddenCount": 0
+  },
+  "outcome": {
+    "decisionsHonored": 8,
+    "decisionsLost": 0,
+    "survivalRate": 1,
+    "mustPreserveKept": [
+      "CSV header stays id,placedAt,total,status",
+      "no new runtime dependencies",
+      "nightly batch can still use cached rows"
+    ],
+    "mustAchieveMet": [
+      "an ad hoc export can produce data newer than the six hour TTL"
+    ]
+  },
+  "process": {
+    "pathStated": "bounded",
+    "pathExpected": "bounded",
+    "pathCorrect": true,
+    "approachesPresented": 3,
+    "distinctApproaches": 3,
+    "fakeAlternatives": 0,
+    "approachDecisionAsked": true,
+    "approachBeforeDetails": true
+  },
+  "notes": "The session declared the correct bounded path, presented three materially distinct solution shapes, and implemented the selected content-fingerprint design while preserving the repository constraints. Its main weakness is depth: retry behavior was not fully decided, and several deeper choices were bundled into a late approval gate rather than independently interrogated."
+}
