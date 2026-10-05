@@ -10,7 +10,7 @@ const pluginRoot = path.join(repositoryRoot, "plugin");
 const skillDirectory = path.join(pluginRoot, "skills", "settle");
 const skillFile = path.join(skillDirectory, "SKILL.md");
 
-const EXPECTED_VERSION = "0.5.0";
+const EXPECTED_VERSION = "0.6.0";
 
 // The skill carries these sections in this order. The eval harness swaps the
 // host section by heading to build its text baseline, so the order is a

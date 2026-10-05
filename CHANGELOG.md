@@ -7,6 +7,8 @@ before 0.4.0 were private iterations and are not listed.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-05
+
 ### Added
 
 - `eval/RESULTS.md`: a five-repeat comparison of settle against no skill,
@@ -17,6 +19,12 @@ before 0.4.0 were private iterations and are not listed.
 - `npm run eval:compare`, which measures arms in rotated rounds so a stopped
   run is still a complete comparison, and `npm run eval:summary`, which
   renders results directories as Markdown.
+- A privacy statement in `docs/privacy.md` for plugin directory listings.
+
+### Changed
+
+- Installation guidance recommends one installation method per host to
+  avoid duplicate skills from plugin and CLI copies installed side by side.
 
 ### Fixed
 
@@ -60,6 +68,7 @@ First public release.
   judge, plus text and no-skill baselines for both hosts.
 - README walkthrough built from real Codex screenshots.
 
-[Unreleased]: https://github.com/ahmtsahin/groundwork/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ahmtsahin/groundwork/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ahmtsahin/groundwork/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ahmtsahin/groundwork/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ahmtsahin/groundwork/releases/tag/v0.4.0
